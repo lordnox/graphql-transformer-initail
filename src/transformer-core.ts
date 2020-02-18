@@ -29,14 +29,16 @@ export const buildSchema = (ctx: TransformerContext) => {
   const mutationNode = ctx.getMutation()
   const queryNode = ctx.getQuery()
   const subscriptionNode = ctx.getSubscription()
-  const includeMutation = mutationNode && !!mutationNode.fields.length
-  const includeQuery = queryNode && !!queryNode.fields.length
-  const includeSubscription = subscriptionNode && !!subscriptionNode.fields.length
+  const includeMutation = mutationNode && !!mutationNode.fields?.length
+  const includeQuery = queryNode && !!queryNode.fields?.length
+  const includeSubscription = subscriptionNode && !!subscriptionNode.fields?.length
 
   const operationTypes: OperationTypeDefinitionNode[] = []
-  if (includeQuery) operationTypes.push(makeOperationType('query', queryNode.name.value))
-  if (includeMutation) operationTypes.push(makeOperationType('mutation', mutationNode.name.value))
-  if (includeSubscription) operationTypes.push(makeOperationType('subscription', subscriptionNode.name.value))
+  if (includeQuery) operationTypes.push(makeOperationType('query', (queryNode as ObjectTypeDefinitionNode).name.value))
+  if (includeMutation)
+    operationTypes.push(makeOperationType('mutation', (mutationNode as ObjectTypeDefinitionNode).name.value))
+  if (includeSubscription)
+    operationTypes.push(makeOperationType('subscription', (subscriptionNode as ObjectTypeDefinitionNode).name.value))
 
   const definitions = Object.keys(ctx.nodeMap).map((k: string) => ctx.getType(k))
 
@@ -113,7 +115,7 @@ export class TransformerContext<Resource = any> {
         // case Kind.INPUT_OBJECT_TYPE_EXTENSION:
         //   this.addInputExtension(ext)
         //   break
-        case Kind.SCALAR_TYPE_EXTENSION:
+        // case Kind.SCALAR_TYPE_EXTENSION:
         default:
           continue
       }
@@ -144,11 +146,13 @@ export class TransformerContext<Resource = any> {
     const schemaNode = this.getSchema()
     const mutationTypeName = schemaNode.operationTypes.find(node => node.operation === operation)
     if (mutationTypeName && mutationTypeName.type && mutationTypeName.type.name) return mutationTypeName.type.name.value
+    return
   }
 
   public getNodeByOperation = (operation: Operation) => {
     const typename = this.getTypenameByOperation(operation)
-    return typename && (this.nodeMap[typename] as ObjectTypeDefinitionNode)
+    if (typename) return this.nodeMap[typename] as ObjectTypeDefinitionNode
+    return
   }
 
   public getSchema = () => this.schema
@@ -161,6 +165,7 @@ export class TransformerContext<Resource = any> {
       const node = this.nodeMap[name]
       if (node.kind === Kind.OBJECT_TYPE_DEFINITION) return node
     }
+    return
   }
 
   /**
@@ -169,17 +174,17 @@ export class TransformerContext<Resource = any> {
    * @param obj The object type definition node to add.
    */
   public addObjectExtension(obj: ObjectTypeExtensionNode) {
-    if (!this.nodeMap[obj.name.value]) {
+    const oldNode = this.getObject(obj.name.value)
+    if (!oldNode) {
       throw new Error(`Cannot extend non-existant type '${obj.name.value}'.`)
     }
     // AppSync does not yet understand type extensions so fold the types in.
-    const oldNode = this.getObject(obj.name.value)
     const newDirs = []
     const oldDirs = oldNode.directives || []
 
     // Filter out duplicate directives, do not add them
     if (obj.directives) {
-      const oldDirectives = (oldNode.directives || []).map(node => node.name.value)
+      const oldDirectives = oldDirs.map(node => node.name.value)
       for (const newDir of obj.directives) if (!oldDirectives.includes(newDir.name.value)) newDirs.push(newDir)
     }
 
@@ -232,6 +237,7 @@ export class TransformerContext<Resource = any> {
 
   private addNodeFields = (operation: Operation, fields: FieldDefinitionNode[]) => {
     const typename = this.getTypenameByOperation(operation)
+    if (!typename) throw new Error(`Operation "${operation}" not found`)
     const node = this.getNodeByOperation(operation)
     if (!node) this.addType(blankObject(typename))
     let nodeType = objectExtension(typename, fields)

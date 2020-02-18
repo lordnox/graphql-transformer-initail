@@ -127,7 +127,7 @@ it('should generate the model correctly to be able to fetch this user', async ()
 
   const schema = makeExecutableSchema({ typeDefs, resolvers })
   const contextValue: Context = { auth: { userId: 'me!' } }
-  const result = await graphql({
+  const result: any = await graphql({
     schema,
     source: '{ user: listUsers { items { id name email }}}',
     contextValue,
@@ -152,7 +152,7 @@ it('should create a configurable directive that updates the resolver result', as
   )
   const schema = makeExecutableSchema({ typeDefs, resolvers })
   const contextValue: Context = { auth: { userId: 'me!' } }
-  const result = await graphql({
+  const result: any = await graphql({
     schema,
     source: '{ hello }',
     contextValue,

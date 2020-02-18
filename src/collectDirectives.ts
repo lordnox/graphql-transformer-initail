@@ -47,8 +47,8 @@ export const collectDirectives = (doc: DocumentNode) => {
 }
 
 export const collectDirectivesByTypeNames = (doc: DocumentNode) => {
-  let directiveTypes = collectDirectivesByType(doc)
-  let types: Record<string, string[]>
+  const directiveTypes = collectDirectivesByType(doc)
+  const types: Record<string, string[]> = {}
   const directives: Set<string> = new Set()
   Object.keys(directiveTypes).forEach(dir => {
     let set: Set<string> = new Set()
@@ -90,29 +90,29 @@ export const collectDirectivesByType = (doc: DocumentNode) => {
 
 export const collectObjectDirectives = (node: ObjectTypeDefinitionNode) => {
   let dirs: DirectiveNode[] = []
-  for (const field of node.fields) {
+  for (const field of node.fields || []) {
     const fieldDirs = collectFieldDirectives(field)
     dirs = dirs.concat(fieldDirs)
   }
-  return dirs.concat(node.directives)
+  return dirs.concat(node.directives as DirectiveNode[])
 }
 
 export const collectInterfaceDirectives = (node: InterfaceTypeDefinitionNode) => {
   let dirs: DirectiveNode[] = []
-  for (const field of node.fields) {
+  for (const field of node.fields || []) {
     const fieldDirs = collectFieldDirectives(field)
     dirs = dirs.concat(fieldDirs)
   }
-  return dirs.concat(node.directives)
+  return dirs.concat(node.directives as DirectiveNode[])
 }
 
 export const collectFieldDirectives = (node: FieldDefinitionNode) => {
   let dirs: DirectiveNode[] = []
-  for (const arg of node.arguments) {
+  for (const arg of node.arguments || []) {
     const argDirs = collectArgumentDirectives(arg)
     dirs = dirs.concat(argDirs)
   }
-  return dirs.concat(node.directives)
+  return dirs.concat(node.directives as DirectiveNode[])
 }
 
 export const collectArgumentDirectives = (node: InputValueDefinitionNode) => [...(node.directives || [])]
@@ -123,20 +123,20 @@ export const collectScalarDirectives = (node: ScalarTypeDefinitionNode) => [...(
 
 export const collectInputObjectDirectives = (node: InputObjectTypeDefinitionNode) => {
   let dirs: DirectiveNode[] = []
-  for (const field of node.fields) {
+  for (const field of node.fields || []) {
     const fieldDirs = collectArgumentDirectives(field)
     dirs = dirs.concat(fieldDirs)
   }
-  return dirs.concat(node.directives)
+  return dirs.concat(node.directives as DirectiveNode[])
 }
 
 export const collectEnumDirectives = (node: EnumTypeDefinitionNode) => {
   let dirs: DirectiveNode[] = []
-  for (const val of node.values) {
+  for (const val of node.values || []) {
     const valDirs = collectEnumValueDirectives(val)
     dirs = dirs.concat(valDirs)
   }
-  return dirs.concat(node.directives)
+  return dirs.concat(node.directives as DirectiveNode[])
 }
 
 export const collectEnumValueDirectives = (node: EnumValueDefinitionNode) => [...(node.directives || [])]

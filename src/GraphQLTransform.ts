@@ -17,15 +17,13 @@ import {
   SchemaDefinitionNode,
 } from 'graphql'
 import { InvalidTransformerError, SchemaValidationError, UnknownDirectiveError } from './errors'
-import { Transformer } from './Transformer'
+import { Transformer } from './transformer'
 import { validateModelSchema } from './validation'
 import { TransformerContext } from './transformer-core'
 import { TransformFormatter } from './transformer-formatter'
 import { createResolver } from './resources'
 
-function isFunction(obj: any) {
-  return obj && typeof obj === 'function'
-}
+const isFunction = <Func extends Function>(obj: any): obj is Func => obj && typeof obj === 'function'
 
 function makeSeenTransformationKey(
   directive: DirectiveNode,
@@ -312,7 +310,7 @@ export class GraphQLTransform {
     validDirectiveNameMap: { [k: string]: boolean },
     context: TransformerContext
   ) {
-    for (const dir of def.directives) {
+    for (const dir of def.directives || []) {
       if (!validDirectiveNameMap[dir.name.value]) {
         throw new UnknownDirectiveError(
           `Unknown directive '${dir.name.value}'. Either remove the directive from the schema or add a transformer to handle it.`
@@ -341,7 +339,7 @@ export class GraphQLTransform {
     context: TransformerContext
   ) {
     let index = 0
-    for (const dir of def.directives) {
+    for (const dir of def.directives || []) {
       if (!validDirectiveNameMap[dir.name.value]) {
         throw new UnknownDirectiveError(
           `Unknown directive '${dir.name.value}'. Either remove the directive from the schema or add a transformer to handle it.`
@@ -362,7 +360,7 @@ export class GraphQLTransform {
       }
       index++
     }
-    for (const field of def.fields) {
+    for (const field of def.fields || []) {
       this.transformField(transformer, def, field, validDirectiveNameMap, context)
     }
   }
@@ -375,7 +373,7 @@ export class GraphQLTransform {
     context: TransformerContext
   ) {
     let index = 0
-    for (const dir of def.directives) {
+    for (const dir of def.directives || []) {
       if (!validDirectiveNameMap[dir.name.value]) {
         throw new UnknownDirectiveError(
           `Unknown directive '${dir.name.value}'. Either remove the directive from the schema or add a transformer to handle it.`
@@ -394,7 +392,7 @@ export class GraphQLTransform {
       }
       index++
     }
-    for (const arg of def.arguments) {
+    for (const arg of def.arguments || []) {
       this.transformArgument(transformer, parent, def, arg, validDirectiveNameMap, context)
     }
   }
@@ -408,7 +406,7 @@ export class GraphQLTransform {
     context: TransformerContext
   ) {
     let index = 0
-    for (const dir of arg.directives) {
+    for (const dir of arg.directives || []) {
       if (!validDirectiveNameMap[dir.name.value]) {
         throw new UnknownDirectiveError(
           `Unknown directive '${dir.name.value}'. Either remove the directive from the schema or add a transformer to handle it.`
@@ -438,7 +436,7 @@ export class GraphQLTransform {
     context: TransformerContext
   ) {
     let index = 0
-    for (const dir of def.directives) {
+    for (const dir of def.directives || []) {
       if (!validDirectiveNameMap[dir.name.value]) {
         throw new UnknownDirectiveError(
           `Unknown directive '${dir.name.value}'. Either remove the directive from the schema or add a transformer to handle it.`
@@ -459,7 +457,7 @@ export class GraphQLTransform {
       }
       index++
     }
-    for (const field of def.fields) {
+    for (const field of def.fields || []) {
       this.transformField(transformer, def, field, validDirectiveNameMap, context)
     }
   }
@@ -471,7 +469,7 @@ export class GraphQLTransform {
     context: TransformerContext
   ) {
     let index = 0
-    for (const dir of def.directives) {
+    for (const dir of def.directives || []) {
       if (!validDirectiveNameMap[dir.name.value]) {
         throw new UnknownDirectiveError(
           `Unknown directive '${dir.name.value}'. Either remove the directive from the schema or add a transformer to handle it.`
@@ -501,7 +499,7 @@ export class GraphQLTransform {
     context: TransformerContext
   ) {
     let index = 0
-    for (const dir of def.directives) {
+    for (const dir of def.directives || []) {
       if (!validDirectiveNameMap[dir.name.value]) {
         throw new UnknownDirectiveError(
           `Unknown directive '${dir.name.value}'. Either remove the directive from the schema or add a transformer to handle it.`
@@ -529,7 +527,7 @@ export class GraphQLTransform {
     context: TransformerContext
   ) {
     let index = 0
-    for (const dir of def.directives) {
+    for (const dir of def.directives || []) {
       if (!validDirectiveNameMap[dir.name.value]) {
         throw new UnknownDirectiveError(
           `Unknown directive '${dir.name.value}'. Either remove the directive from the schema or add a transformer to handle it.`
@@ -548,7 +546,7 @@ export class GraphQLTransform {
       }
       index++
     }
-    for (const value of def.values) {
+    for (const value of def.values || []) {
       this.transformEnumValue(transformer, def, value, validDirectiveNameMap, context)
     }
   }
@@ -561,7 +559,7 @@ export class GraphQLTransform {
     context: TransformerContext
   ) {
     let index = 0
-    for (const dir of def.directives) {
+    for (const dir of def.directives || []) {
       if (!validDirectiveNameMap[dir.name.value]) {
         throw new UnknownDirectiveError(
           `Unknown directive '${dir.name.value}'. Either remove the directive from the schema or add a transformer to handle it.`
@@ -591,7 +589,7 @@ export class GraphQLTransform {
     context: TransformerContext
   ) {
     let index = 0
-    for (const dir of def.directives) {
+    for (const dir of def.directives || []) {
       if (!validDirectiveNameMap[dir.name.value]) {
         throw new UnknownDirectiveError(
           `Unknown directive '${dir.name.value}'. Either remove the directive from the schema or add a transformer to handle it.`
@@ -610,7 +608,7 @@ export class GraphQLTransform {
       }
       index++
     }
-    for (const field of def.fields) {
+    for (const field of def.fields || []) {
       this.transformInputField(transformer, def, field, validDirectiveNameMap, context)
     }
   }
@@ -623,7 +621,7 @@ export class GraphQLTransform {
     context: TransformerContext
   ) {
     let index = 0
-    for (const dir of def.directives) {
+    for (const dir of def.directives || []) {
       if (!validDirectiveNameMap[dir.name.value]) {
         throw new UnknownDirectiveError(
           `Unknown directive '${dir.name.value}'. Either remove the directive from the schema or add a transformer to handle it.`

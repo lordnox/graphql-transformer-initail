@@ -85,7 +85,7 @@ export function attributeTypeFromScalar(scalar: TypeNode) {
   }
 }
 
-export function isScalar(type: TypeNode) {
+export function isScalar(type: TypeNode): boolean {
   if (type.kind === Kind.NON_NULL_TYPE) {
     return isScalar(type.type)
   } else if (type.kind === Kind.LIST_TYPE) {
@@ -95,7 +95,7 @@ export function isScalar(type: TypeNode) {
   }
 }
 
-export function isScalarOrEnum(type: TypeNode, enums: EnumTypeDefinitionNode[]) {
+export function isScalarOrEnum(type: TypeNode, enums: EnumTypeDefinitionNode[]): boolean {
   if (type.kind === Kind.NON_NULL_TYPE) {
     return isScalarOrEnum(type.type, enums)
   } else if (type.kind === Kind.LIST_TYPE) {
@@ -135,11 +135,11 @@ export function isNonNullType(type: TypeNode): boolean {
 }
 
 export function getDirectiveArgument(directive: DirectiveNode, arg: string, dflt?: any) {
-  const argument = directive.arguments.find(a => a.name.value === arg)
+  const argument = directive.arguments?.find(a => a.name.value === arg)
   return argument ? valueFromASTUntyped(argument.value) : dflt
 }
 
-export function unwrapNonNull(type: TypeNode) {
+export function unwrapNonNull(type: TypeNode): NamedTypeNode | ListTypeNode {
   if (type.kind === 'NonNullType') {
     return unwrapNonNull(type.type)
   }
@@ -220,7 +220,7 @@ export function extensionWithFields(
 ): ObjectTypeExtensionNode {
   return {
     ...object,
-    fields: [...object.fields, ...fields],
+    fields: [...(object.fields || []), ...fields],
   }
 }
 
@@ -231,16 +231,13 @@ export function extensionWithDirectives(
   if (directives && directives.length > 0) {
     const newDirectives = []
 
-    for (const directive of directives) {
-      if (!object.directives.find(d => d.name.value === directive.name.value)) {
-        newDirectives.push(directive)
-      }
-    }
+    for (const directive of directives)
+      if (!object.directives?.find(d => d.name.value === directive.name.value)) newDirectives.push(directive)
 
     if (newDirectives.length > 0) {
       return {
         ...object,
-        directives: [...object.directives, ...newDirectives],
+        directives: [...(object.directives || []), ...newDirectives],
       }
     }
   }
@@ -255,16 +252,13 @@ export function extendFieldWithDirectives(
   if (directives && directives.length > 0) {
     const newDirectives = []
 
-    for (const directive of directives) {
-      if (!field.directives.find(d => d.name.value === directive.name.value)) {
-        newDirectives.push(directive)
-      }
-    }
+    for (const directive of directives)
+      if (!field.directives?.find(d => d.name.value === directive.name.value)) newDirectives.push(directive)
 
     if (newDirectives.length > 0) {
       return {
         ...field,
-        directives: [...field.directives, ...newDirectives],
+        directives: [...(field.directives || []), ...newDirectives],
       }
     }
   }
@@ -368,6 +362,7 @@ export function makeValueNode(value: any): ValueNode {
       }),
     }
   }
+  throw new Error('Could not create ValueNode!')
 }
 
 export function makeInputValueDefinition(name: string, type: TypeNode): InputValueDefinitionNode {

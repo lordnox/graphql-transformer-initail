@@ -21,14 +21,14 @@ const createStrip = (excepted: (node: DirectiveNode) => boolean) => {
     node: Type
   ): Type => ({
     ...node,
-    directives: node.directives.filter(excepted),
+    directives: node.directives?.filter(excepted),
   })
   const fieldDirectivesFilter = <Type extends ObjectTypeDefinitionNode | InterfaceTypeDefinitionNode>(
     node: Type
   ): Type => ({
     ...node,
     fields: node.fields ? node.fields.map(strip.fieldDirectives) : node.fields,
-    directives: node.directives.filter(excepted),
+    directives: node.directives?.filter(excepted),
   })
   const strip = {
     objectDirectives: fieldDirectivesFilter,
@@ -37,7 +37,7 @@ const createStrip = (excepted: (node: DirectiveNode) => boolean) => {
     fieldDirectives: (node: FieldDefinitionNode): FieldDefinitionNode => ({
       ...node,
       arguments: node.arguments ? node.arguments.map(strip.argumentDirectives) : node.arguments,
-      directives: node.directives.filter(excepted),
+      directives: node.directives?.filter(excepted),
     }),
 
     argumentDirectives: simpleDirectivesFilter,
@@ -48,13 +48,13 @@ const createStrip = (excepted: (node: DirectiveNode) => boolean) => {
     inputObjectDirectives: (node: InputObjectTypeDefinitionNode): InputObjectTypeDefinitionNode => ({
       ...node,
       fields: node.fields ? node.fields.map(strip.argumentDirectives) : node.fields,
-      directives: node.directives.filter(excepted),
+      directives: node.directives?.filter(excepted),
     }),
 
     enumDirectives: (node: EnumTypeDefinitionNode): EnumTypeDefinitionNode => ({
       ...node,
       values: node.values ? node.values.map(strip.enumValueDirectives) : node.values,
-      directives: node.directives.filter(excepted),
+      directives: node.directives?.filter(excepted),
     }),
   }
   return strip

@@ -36,27 +36,27 @@ export class TransformFormatter {
     let includeMutation = true
     let includeQuery = true
     let includeSubscription = true
-    if (!mutationNode || mutationNode.fields.length === 0) {
+    if (!mutationNode || mutationNode.fields?.length === 0) {
       delete ctx.nodeMap.Mutation
       includeMutation = false
     }
-    if (!queryNode || queryNode.fields.length === 0) {
+    if (!queryNode || queryNode.fields?.length === 0) {
       delete ctx.nodeMap.Query
       includeQuery = false
     }
-    if (!subscriptionNode || subscriptionNode.fields.length === 0) {
+    if (!subscriptionNode || subscriptionNode.fields?.length === 0) {
       delete ctx.nodeMap.Subscription
       includeSubscription = false
     }
     const ops = []
     if (includeQuery) {
-      ops.push(makeOperationType('query', queryNode.name.value))
+      ops.push(makeOperationType('query', (queryNode as ObjectTypeDefinitionNode).name.value))
     }
     if (includeMutation) {
-      ops.push(makeOperationType('mutation', mutationNode.name.value))
+      ops.push(makeOperationType('mutation', (mutationNode as ObjectTypeDefinitionNode).name.value))
     }
     if (includeSubscription) {
-      ops.push(makeOperationType('subscription', subscriptionNode.name.value))
+      ops.push(makeOperationType('subscription', (subscriptionNode as ObjectTypeDefinitionNode).name.value))
     }
     ctx.schema = makeSchema(ops)
     return print(
@@ -74,7 +74,7 @@ export class TransformFormatter {
   private buildAndSetSchema = (ctx: TransformerContext) => this.buildSchema(ctx)
 
   private collectResolversFunctionsAndSchema(ctx: TransformerContext) {
-    let resolverMap = {}
+    let resolverMap: Record<string, any> = {}
 
     const resources = ctx.resources
     for (const resourceName of Object.keys(resources)) {

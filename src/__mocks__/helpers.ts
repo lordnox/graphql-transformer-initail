@@ -11,7 +11,7 @@ import {
 
 export const expectFieldsOnInputType = (type: InputObjectTypeDefinitionNode, fields: string[], not = false) => {
   for (const fieldName of fields) {
-    const foundField = type.fields.find((f: InputValueDefinitionNode) => f.name.value === fieldName)
+    const foundField = type.fields?.find((f: InputValueDefinitionNode) => f.name.value === fieldName)
     if (not) expect(foundField).not.toBeDefined()
     else expect(foundField).toBeDefined()
   }
@@ -19,7 +19,7 @@ export const expectFieldsOnInputType = (type: InputObjectTypeDefinitionNode, fie
 
 export const expectFields = (type: ObjectTypeDefinitionNode, fields: string[], not = false) => {
   for (const fieldName of fields) {
-    const foundField = type.fields.find((f: FieldDefinitionNode) => f.name.value === fieldName)
+    const foundField = type.fields?.find((f: FieldDefinitionNode) => f.name.value === fieldName)
     if (not) expect(foundField).not.toBeDefined()
     else expect(foundField).toBeDefined()
   }
@@ -34,14 +34,14 @@ export const expectFieldsOnTypeGenerator = (doc: DocumentNode) => (name: string,
 }
 
 export const getFieldOnInputType = (type: InputObjectTypeDefinitionNode, field: string) =>
-  type.fields.find(node => node.name.value === field)
+  type.fields?.find(node => node.name.value === field)
 
 export const getFieldOnObjectType = (type: ObjectTypeDefinitionNode, field: string) =>
-  type.fields.find(node => node.name.value === field)
+  type.fields?.find(node => node.name.value === field)
 
 export const doNotExpectFields = (type: ObjectTypeDefinitionNode, fields: string[]) => {
   for (const fieldName of fields) {
-    expect(type.fields.find(node => node.name.value === fieldName)).toBeUndefined()
+    expect(type.fields?.find(node => node.name.value === fieldName)).toBeUndefined()
   }
 }
 

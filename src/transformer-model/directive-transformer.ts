@@ -121,7 +121,7 @@ export const createMutations = ({ def, directive, ctx, resources, nonModelArray 
   ctx.addMutationFields(mutationFields)
 
   if (shouldMakeCreate || shouldMakeUpdate || shouldMakeDelete) {
-    this.generateConditionInputs(ctx, def)
+    generateConditionInputs(ctx, def)
   }
 }
 
@@ -133,8 +133,8 @@ export const createQueries = ({ def, directive, ctx, resources }: CreateFunction
   // Configure queries based on *queries* argument
   let shouldMakeGet = true
   let shouldMakeList = true
-  let getFieldNameOverride: string = undefined
-  let listFieldNameOverride: string = undefined
+  let getFieldNameOverride: string | undefined = undefined
+  let listFieldNameOverride: string | undefined = undefined
 
   // Figure out which queries to make and if they have name overrides.
   // If queries is undefined (default), create all queries
@@ -157,7 +157,7 @@ export const createQueries = ({ def, directive, ctx, resources }: CreateFunction
   }
 
   if (shouldMakeList) {
-    if (!this.typeExist('ModelSortDirection', ctx)) {
+    if (!typeExist('ModelSortDirection', ctx)) {
       const tableSortDirection = makeModelSortDirectionEnumObject()
       ctx.addEnum(tableSortDirection)
     }
@@ -184,7 +184,7 @@ export const createQueries = ({ def, directive, ctx, resources }: CreateFunction
   }
 
   if (shouldMakeList) {
-    this.generateModelXConnectionType(ctx, def)
+    generateModelXConnectionType(ctx, def)
 
     // Create the list resolver
     const listResolver = resources.makeListResolver(
@@ -197,7 +197,7 @@ export const createQueries = ({ def, directive, ctx, resources }: CreateFunction
 
     queryFields.push(makeConnectionField(listResolver.fieldName, def.name.value))
   }
-  this.generateFilterInputs(ctx, def)
+  generateFilterInputs(ctx, def)
 
   ctx.addQueryFields(queryFields)
 }
@@ -309,7 +309,7 @@ export const generateModelXConnectionType = (
   isSync: Boolean = false
 ) => {
   const tableXConnectionName = ModelResourceIDs.ModelConnectionTypeName(def.name.value)
-  if (this.typeExist(tableXConnectionName, ctx)) {
+  if (typeExist(tableXConnectionName, ctx)) {
     return
   }
 
@@ -322,7 +322,7 @@ export const generateModelXConnectionType = (
 export const generateFilterInputs = (ctx: TransformerContext, def: ObjectTypeDefinitionNode) => {
   const scalarFilters = makeScalarFilterInputs(supportsConditions(ctx))
   for (const filter of scalarFilters) {
-    if (!this.typeExist(filter.name.value, ctx)) {
+    if (!typeExist(filter.name.value, ctx)) {
       ctx.addInput(filter)
     }
   }
@@ -330,14 +330,14 @@ export const generateFilterInputs = (ctx: TransformerContext, def: ObjectTypeDef
   // Create the Enum filters
   const enumFilters = makeEnumFilterInputObjects(def, ctx, supportsConditions(ctx))
   for (const filter of enumFilters) {
-    if (!this.typeExist(filter.name.value, ctx)) {
+    if (!typeExist(filter.name.value, ctx)) {
       ctx.addInput(filter)
     }
   }
 
   // Create the ModelXFilterInput
   const tableXQueryFilterInput = makeModelXFilterInputObject(def, ctx, supportsConditions(ctx))
-  if (!this.typeExist(tableXQueryFilterInput.name.value, ctx)) {
+  if (!typeExist(tableXQueryFilterInput.name.value, ctx)) {
     ctx.addInput(tableXQueryFilterInput)
   }
 }
@@ -345,7 +345,7 @@ export const generateFilterInputs = (ctx: TransformerContext, def: ObjectTypeDef
 export const generateConditionInputs = (ctx: TransformerContext, def: ObjectTypeDefinitionNode) => {
   const scalarFilters = makeScalarFilterInputs(supportsConditions(ctx))
   for (const filter of scalarFilters) {
-    if (!this.typeExist(filter.name.value, ctx)) {
+    if (!typeExist(filter.name.value, ctx)) {
       ctx.addInput(filter)
     }
   }
@@ -353,7 +353,7 @@ export const generateConditionInputs = (ctx: TransformerContext, def: ObjectType
   // Create the Enum filters
   const enumFilters = makeEnumFilterInputObjects(def, ctx, supportsConditions(ctx))
   for (const filter of enumFilters) {
-    if (!this.typeExist(filter.name.value, ctx)) {
+    if (!typeExist(filter.name.value, ctx)) {
       ctx.addInput(filter)
     }
   }
@@ -361,7 +361,7 @@ export const generateConditionInputs = (ctx: TransformerContext, def: ObjectType
   if (supportsConditions(ctx)) {
     // Create the ModelXConditionInput
     const tableXMutationConditionInput = makeModelXConditionInputObject(def, ctx, supportsConditions(ctx))
-    if (!this.typeExist(tableXMutationConditionInput.name.value, ctx)) {
+    if (!typeExist(tableXMutationConditionInput.name.value, ctx)) {
       ctx.addInput(tableXMutationConditionInput)
     }
   }
@@ -375,10 +375,10 @@ export const updateMutationConditionInput = (ctx: TransformerContext, type: Obje
     // Get the existing ModelXConditionInput
     const tableXMutationConditionInputName = ModelResourceIDs.ModelConditionInputTypeName(type.name.value)
 
-    if (this.typeExist(tableXMutationConditionInputName, ctx)) {
+    if (typeExist(tableXMutationConditionInputName, ctx)) {
       const tableXMutationConditionInput = <InputObjectTypeDefinitionNode>ctx.getType(tableXMutationConditionInputName)
 
-      const keyDirectives = type.directives.filter(d => d.name.value === 'key')
+      const keyDirectives = type.directives?.filter(d => d.name.value === 'key')
 
       // If there are @key directives defined we've nothing to do, it will handle everything
       if (keyDirectives && keyDirectives.length > 0) {
@@ -386,10 +386,10 @@ export const updateMutationConditionInput = (ctx: TransformerContext, type: Obje
       }
 
       // Remove the field named 'id' from the condition if there is one
-      const idField = tableXMutationConditionInput.fields.find(f => f.name.value === 'id')
+      const idField = tableXMutationConditionInput.fields?.find(f => f.name.value === 'id')
 
       if (idField) {
-        const reducedFields = tableXMutationConditionInput.fields.filter(f => Boolean(f.name.value !== 'id'))
+        const reducedFields = tableXMutationConditionInput.fields?.filter(f => Boolean(f.name.value !== 'id'))
 
         const updatedInput = {
           ...tableXMutationConditionInput,
