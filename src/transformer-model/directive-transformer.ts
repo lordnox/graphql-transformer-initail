@@ -47,7 +47,7 @@ export const createMutations = ({ def, directive, ctx, resources, nonModelArray 
   let shouldMakeCreate = resources.model.resolvers.hasOwnProperty('create')
   let shouldMakeUpdate = resources.model.resolvers.hasOwnProperty('update')
   let shouldMakeDelete = resources.model.resolvers.hasOwnProperty('delete')
-  console.log({ shouldMakeCreate, shouldMakeUpdate, shouldMakeDelete, arg: directiveArguments.mutations })
+
   let createFieldNameOverride = undefined
   let updateFieldNameOverride = undefined
   let deleteFieldNameOverride = undefined
@@ -85,6 +85,9 @@ export const createMutations = ({ def, directive, ctx, resources, nonModelArray 
     }
     const createResolver = resources.makeCreateResolver(def.name.value, createFieldNameOverride)
 
+    const resourceId = ResolverResourceIDs.CreateResolverResourceID(typeName)
+    ctx.setResource(resourceId, createResolver)
+
     const args = [makeInputValueDefinition('input', makeNonNullType(makeNamedType(createInput.name.value)))]
     if (supportsConditions(ctx)) {
       args.push(makeInputValueDefinition('condition', makeNamedType(conditionInputName)))
@@ -99,6 +102,9 @@ export const createMutations = ({ def, directive, ctx, resources, nonModelArray 
     }
     const updateResolver = resources.makeUpdateResolver(def.name.value, updateFieldNameOverride)
 
+    const resourceId = ResolverResourceIDs.UpdateResolverResourceID(typeName)
+    ctx.setResource(resourceId, updateResolver)
+
     const args = [makeInputValueDefinition('input', makeNonNullType(makeNamedType(updateInput.name.value)))]
     if (supportsConditions(ctx)) {
       args.push(makeInputValueDefinition('condition', makeNamedType(conditionInputName)))
@@ -112,6 +118,9 @@ export const createMutations = ({ def, directive, ctx, resources, nonModelArray 
       ctx.addInput(deleteInput)
     }
     const deleteResolver = resources.makeDeleteResolver(def.name.value, deleteFieldNameOverride)
+
+    const resourceId = ResolverResourceIDs.DeleteResolverResourceID(typeName)
+    ctx.setResource(resourceId, deleteResolver)
 
     const args = [makeInputValueDefinition('input', makeNonNullType(makeNamedType(deleteInput.name.value)))]
     if (supportsConditions(ctx)) {

@@ -77,7 +77,6 @@ export class TransformFormatter {
     let resolverMap: Record<string, any> = {}
 
     const resources = ctx.resources
-    console.log(resources)
     for (const resourceName of Object.keys(resources)) {
       const resource = resources[resourceName]
       if (resource.type !== RESOLVER) break

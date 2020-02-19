@@ -50,7 +50,7 @@ const transform = (typeDefs: string, resolvers: any = {}) => {
             resolvers: {
               get: () => null,
               list: () => null,
-              create: () => null,
+              create: () => ({ id: 5 }),
             },
           },
         },
@@ -80,15 +80,16 @@ it('should generate all proper types', () => {
   expectFieldsOnType('CreateUserInput', ['id', 'name', 'email'])
   expectFieldsOnType('UpdateUserInput', ['id', 'name', 'email'])
   expectFieldsOnType('DeleteUserInput', ['id'])
-  expectFieldsOnType('ModelUserFilterInput', ['id', 'name', 'email', 'and', 'or', 'not'])
-  expectFieldsOnType('ModelUserConditionInput', ['name', 'email', 'and', 'or', 'not'])
+  expectFieldsOnType('ModelUserFilterInput', ['id', 'name', 'email', '_and', '_or', '_not'])
+  expectFieldsOnType('ModelUserConditionInput', ['name', 'email', '_and', '_or', '_not'])
   expectFieldsOnType('ModelUserConnection', ['items', 'nextToken'])
   expectFieldsOnType('DeleteUserInput', ['id'])
 })
 
-it('should omit generating mutations', () => {
+it.skip('should omit generating mutations', () => {
+  // @TODO The mutations and queries should work of the model given, not some data in the @model directive. That might be used for @auth!
   const { typeDefs } = transform(`
-    type Users @model {
+    type User @model(modelName: "Users") {
       id: ID!
       name: String!
       email: String!
@@ -98,13 +99,14 @@ it('should omit generating mutations', () => {
       dummy: Int # Make sure the Mutation type exists
     }
   `)
+  console.log(typeDefs)
   const document = parse(typeDefs)
   const expectFieldsOnType = expectFieldsOnTypeGenerator(document)
   expectFieldsOnType('Query', ['getUser', 'listUsers'])
   expectFieldsOnType('Mutation', ['createUser', 'updateUser', 'deleteUser'], true)
 })
 
-it.only('should generate createPost mutation', () => {
+it('should generate createPost mutation', () => {
   const { typeDefs } = transform(`
     type Post @model(modelName: "Posts") {
       id: ID!
@@ -116,7 +118,6 @@ it.only('should generate createPost mutation', () => {
       dummy: Int # Make sure the Mutation type exists
     }
   `)
-  console.log(typeDefs)
   const document = parse(typeDefs)
   const expectFieldsOnType = expectFieldsOnTypeGenerator(document)
   expectFieldsOnType('Query', ['getPost', 'listPosts'])
@@ -198,4 +199,23 @@ it('should handle multible models', () => {
   const document = parse(typeDefs)
   const expectFieldsOnType = expectFieldsOnTypeGenerator(document)
   expectFieldsOnType('Query', ['getUser', 'listUsers', 'getPost', 'listPosts'])
+})
+
+it('should have working mutations', async () => {
+  const { typeDefs, resolvers } = transform(`
+    type Post @model(modelName: "Posts") {
+      id: ID!
+      name: String
+    }
+  `)
+  expect(resolvers).toHaveProperty('Mutation')
+  expect(resolvers.Mutation).toHaveProperty('createPost')
+  const schema = makeExecutableSchema({ typeDefs, resolvers })
+  const contextValue: Context = { auth: { userId: 'me!' } }
+  const result: any = await graphql({
+    schema,
+    source: 'mutation { createPost(input: {name: "Test"}) { id } }',
+    contextValue,
+  })
+  expect(result.data.createPost.id).toBe('5') // random number, decided by dice throw
 })

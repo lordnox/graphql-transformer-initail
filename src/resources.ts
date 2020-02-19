@@ -33,7 +33,6 @@ export class ResourceFactory<Model = any> {
 
   constructor(model: Model) {
     this.model = model
-    console.log('ResourceFactory:', model)
     this.createResolver = createResolverGenerator(model)
   }
 
