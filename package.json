@@ -1,7 +1,7 @@
 {
   "name": "@raynode/graphql-transformer",
   "version": "1.0.0",
-  "main": "src/index.ts",
+  "main": "build/index.js",
   "scripts": {
     "test": "jest --watch",
     "build": "tsc "

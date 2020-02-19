@@ -35,22 +35,9 @@ const OTHER_SCALARS: ScalarMap = {
   Double: 'Float',
 }
 
-export const APPSYNC_DEFINED_SCALARS: ScalarMap = {
-  AWSDate: 'String',
-  AWSTime: 'String',
-  AWSDateTime: 'String',
-  AWSTimestamp: 'Int',
-  AWSEmail: 'String',
-  AWSJSON: 'String',
-  AWSURL: 'String',
-  AWSPhone: 'String',
-  AWSIPAddress: 'String',
-}
-
 export const DEFAULT_SCALARS: ScalarMap = {
   ...STANDARD_SCALARS,
   ...OTHER_SCALARS,
-  ...APPSYNC_DEFINED_SCALARS,
 }
 
 export const NUMERIC_SCALARS: { [k: string]: boolean } = {
@@ -556,9 +543,9 @@ export function makeConnectionField(fieldName: string, returnTypeName: string, a
     fieldName,
     [
       ...args,
-      makeInputValueDefinition('filter', makeNamedType(ModelResourceIDs.ModelFilterInputTypeName(returnTypeName))),
+      makeInputValueDefinition('where', makeNamedType(ModelResourceIDs.ModelFilterInputTypeName(returnTypeName))),
       makeInputValueDefinition('limit', makeNamedType('Int')),
-      makeInputValueDefinition('nextToken', makeNamedType('String')),
+      // makeInputValueDefinition('nextToken', makeNamedType('String')),
     ],
     makeNamedType(ModelResourceIDs.ModelConnectionTypeName(returnTypeName))
   )

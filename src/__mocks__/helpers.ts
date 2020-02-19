@@ -20,8 +20,10 @@ export const expectFieldsOnInputType = (type: InputObjectTypeDefinitionNode, fie
 export const expectFields = (type: ObjectTypeDefinitionNode, fields: string[], not = false) => {
   for (const fieldName of fields) {
     const foundField = type.fields?.find((f: FieldDefinitionNode) => f.name.value === fieldName)
-    if (not) expect(foundField).not.toBeDefined()
-    else expect(foundField).toBeDefined()
+    if (!!foundField === not) {
+      console.log(foundField, type.fields)
+      throw new Error(`Expected ${fieldName} ${not ? 'not ' : ''}to be found on ${type.name.value}`)
+    }
   }
 }
 

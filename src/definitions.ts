@@ -52,6 +52,10 @@ export const FLOAT_CONDITIONS = ['ne', 'eq', 'le', 'lt', 'ge', 'gt', 'between']
 export const BOOLEAN_CONDITIONS = ['ne', 'eq']
 export const SIZE_CONDITIONS = ['ne', 'eq', 'le', 'lt', 'ge', 'gt', 'between']
 
+export const JOIN_TYPE_AND = '_and'
+export const JOIN_TYPE_OR = '_or'
+export const JOIN_TYPE_NOT = '_not'
+
 export const STRING_FUNCTIONS = new Set<string>([]) // 'attributeExists', 'attributeType', 'size'
 export const ID_FUNCTIONS = new Set<string>([]) // 'attributeExists', 'attributeType', 'size'
 export const INT_FUNCTIONS = new Set<string>([]) // 'attributeExists', 'attributeType'
@@ -323,7 +327,7 @@ export function makeModelXFilterInputObject(
       kind: Kind.INPUT_VALUE_DEFINITION,
       name: {
         kind: 'Name',
-        value: 'and',
+        value: JOIN_TYPE_AND,
       },
       type: makeListType(makeNamedType(name)),
       // TODO: Service does not support new style descriptions so wait.
@@ -334,7 +338,7 @@ export function makeModelXFilterInputObject(
       kind: Kind.INPUT_VALUE_DEFINITION,
       name: {
         kind: 'Name',
-        value: 'or',
+        value: JOIN_TYPE_OR,
       },
       type: makeListType(makeNamedType(name)),
       // TODO: Service does not support new style descriptions so wait.
@@ -345,7 +349,7 @@ export function makeModelXFilterInputObject(
       kind: Kind.INPUT_VALUE_DEFINITION,
       name: {
         kind: 'Name',
-        value: 'not',
+        value: JOIN_TYPE_NOT,
       },
       type: makeNamedType(name),
       // TODO: Service does not support new style descriptions so wait.
@@ -406,7 +410,7 @@ export function makeModelXConditionInputObject(
       kind: Kind.INPUT_VALUE_DEFINITION,
       name: {
         kind: 'Name',
-        value: 'and',
+        value: JOIN_TYPE_AND,
       },
       type: makeListType(makeNamedType(name)),
       // TODO: Service does not support new style descriptions so wait.
@@ -417,7 +421,7 @@ export function makeModelXConditionInputObject(
       kind: Kind.INPUT_VALUE_DEFINITION,
       name: {
         kind: 'Name',
-        value: 'or',
+        value: JOIN_TYPE_OR,
       },
       type: makeListType(makeNamedType(name)),
       // TODO: Service does not support new style descriptions so wait.
@@ -428,7 +432,7 @@ export function makeModelXConditionInputObject(
       kind: Kind.INPUT_VALUE_DEFINITION,
       name: {
         kind: 'Name',
-        value: 'not',
+        value: JOIN_TYPE_NOT,
       },
       type: makeNamedType(name),
       // TODO: Service does not support new style descriptions so wait.
@@ -587,8 +591,8 @@ function getScalarFilterInputType(condition: string, type: string, filterInputNa
   switch (condition) {
     case 'between':
       return makeListType(makeNamedType(type))
-    case 'and':
-    case 'or':
+    case JOIN_TYPE_AND:
+    case JOIN_TYPE_OR:
       return makeNamedType(filterInputName)
     default:
       return makeNamedType(type)

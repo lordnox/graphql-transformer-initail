@@ -50,6 +50,7 @@ const transform = (typeDefs: string, resolvers: any = {}) => {
             resolvers: {
               get: () => null,
               list: () => null,
+              create: () => null,
             },
           },
         },
@@ -87,7 +88,7 @@ it('should generate all proper types', () => {
 
 it('should omit generating mutations', () => {
   const { typeDefs } = transform(`
-    type Posts @model {
+    type Users @model {
       id: ID!
       name: String!
       email: String!
@@ -97,11 +98,30 @@ it('should omit generating mutations', () => {
       dummy: Int # Make sure the Mutation type exists
     }
   `)
-  // console.log(schema)
   const document = parse(typeDefs)
   const expectFieldsOnType = expectFieldsOnTypeGenerator(document)
-  expectFieldsOnType('Query', ['getPosts', 'listPostss'])
-  expectFieldsOnType('Mutation', ['createPosts', 'updatePosts', 'deletePosts'], true)
+  expectFieldsOnType('Query', ['getUser', 'listUsers'])
+  expectFieldsOnType('Mutation', ['createUser', 'updateUser', 'deleteUser'], true)
+})
+
+it.only('should generate createPost mutation', () => {
+  const { typeDefs } = transform(`
+    type Post @model(modelName: "Posts") {
+      id: ID!
+      title: String!
+      tags: [String!]!
+    }
+
+    type Mutation {
+      dummy: Int # Make sure the Mutation type exists
+    }
+  `)
+  console.log(typeDefs)
+  const document = parse(typeDefs)
+  const expectFieldsOnType = expectFieldsOnTypeGenerator(document)
+  expectFieldsOnType('Query', ['getPost', 'listPosts'])
+  expectFieldsOnType('Mutation', ['createPost'])
+  expectFieldsOnType('Mutation', ['updatePost', 'deletePosts'], true)
 })
 
 it('should throw an error if the model does not exists', () => {

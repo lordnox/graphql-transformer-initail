@@ -33,16 +33,17 @@ export class ResourceFactory<Model = any> {
 
   constructor(model: Model) {
     this.model = model
+    console.log('ResourceFactory:', model)
     this.createResolver = createResolverGenerator(model)
   }
 
   // .initTemplate
 
-  public makeCreateResolver = (type: string, nameOverride?: string, queryTypeName: string = 'Query') => {
+  public makeCreateResolver = (type: string, nameOverride?: string, queryTypeName: string = 'Mutation') => {
     const fieldName = nameOverride ? nameOverride : graphqlName('create' + toUpper(type))
     return this.createResolver('create', fieldName, queryTypeName)
   }
-  public makeDeleteResolver = (type: string, nameOverride?: string, queryTypeName: string = 'Query') => {
+  public makeDeleteResolver = (type: string, nameOverride?: string, queryTypeName: string = 'Mutation') => {
     const fieldName = nameOverride ? nameOverride : graphqlName('delete' + toUpper(type))
     return this.createResolver('delete', fieldName, queryTypeName)
   }
@@ -50,7 +51,7 @@ export class ResourceFactory<Model = any> {
     const fieldName = nameOverride ? nameOverride : graphqlName('get' + toUpper(type))
     return this.createResolver('get', fieldName, queryTypeName)
   }
-  public makeUpdateResolver = (type: string, nameOverride?: string, queryTypeName: string = 'Query') => {
+  public makeUpdateResolver = (type: string, nameOverride?: string, queryTypeName: string = 'Mutation') => {
     const fieldName = nameOverride ? nameOverride : graphqlName('update' + toUpper(type))
     return this.createResolver('update', fieldName, queryTypeName)
   }

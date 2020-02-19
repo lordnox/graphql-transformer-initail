@@ -47,6 +47,7 @@ export const createMutations = ({ def, directive, ctx, resources, nonModelArray 
   let shouldMakeCreate = resources.model.resolvers.hasOwnProperty('create')
   let shouldMakeUpdate = resources.model.resolvers.hasOwnProperty('update')
   let shouldMakeDelete = resources.model.resolvers.hasOwnProperty('delete')
+  console.log({ shouldMakeCreate, shouldMakeUpdate, shouldMakeDelete, arg: directiveArguments.mutations })
   let createFieldNameOverride = undefined
   let updateFieldNameOverride = undefined
   let deleteFieldNameOverride = undefined
