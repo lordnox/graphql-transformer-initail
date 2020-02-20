@@ -17,7 +17,7 @@ import {
 } from 'graphql'
 import DefaultSchema from './defaultSchema'
 import { stripDirectives } from './stripDirectives'
-import { blankObject, makeOperationType, objectExtension } from './transformer-common'
+import { makeObjectDefinition, makeOperationType, objectExtension } from './transformer-common'
 
 export const MUTATION = 'mutation'
 export const QUERY = 'query'
@@ -239,7 +239,7 @@ export class TransformerContext<Resource = any> {
     const typename = this.getTypenameByOperation(operation)
     if (!typename) throw new Error(`Operation "${operation}" not found`)
     const node = this.getNodeByOperation(operation)
-    if (!node) this.addType(blankObject(typename))
+    if (!node) this.addType(makeObjectDefinition(typename))
     let nodeType = objectExtension(typename, fields)
     this.addObjectExtension(nodeType)
   }

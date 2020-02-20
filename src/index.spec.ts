@@ -214,7 +214,7 @@ it('should have working mutations', async () => {
   const contextValue: Context = { auth: { userId: 'me!' } }
   const result: any = await graphql({
     schema,
-    source: 'mutation { createPost(input: {name: "Test"}) { id } }',
+    source: 'mutation { createPost(data: {name: "Test"}) { id } }',
     contextValue,
   })
   expect(result.data.createPost.id).toBe('5') // random number, decided by dice throw

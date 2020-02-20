@@ -38,26 +38,20 @@ export class ResourceFactory<Model = any> {
 
   // .initTemplate
 
-  public makeCreateResolver = (type: string, nameOverride?: string, queryTypeName: string = 'Mutation') => {
-    const fieldName = nameOverride ? nameOverride : graphqlName('create' + toUpper(type))
-    return this.createResolver('create', fieldName, queryTypeName)
-  }
-  public makeDeleteResolver = (type: string, nameOverride?: string, queryTypeName: string = 'Mutation') => {
-    const fieldName = nameOverride ? nameOverride : graphqlName('delete' + toUpper(type))
-    return this.createResolver('delete', fieldName, queryTypeName)
-  }
-  public makeGetResolver = (type: string, nameOverride?: string, queryTypeName: string = 'Query') => {
-    const fieldName = nameOverride ? nameOverride : graphqlName('get' + toUpper(type))
-    return this.createResolver('get', fieldName, queryTypeName)
-  }
-  public makeUpdateResolver = (type: string, nameOverride?: string, queryTypeName: string = 'Mutation') => {
-    const fieldName = nameOverride ? nameOverride : graphqlName('update' + toUpper(type))
-    return this.createResolver('update', fieldName, queryTypeName)
-  }
-  public makeListResolver = (type: string, nameOverride?: string, queryTypeName: string = 'Query') => {
-    const fieldName = nameOverride ? nameOverride : graphqlName('list' + plurality(toUpper(type)))
-    return this.createResolver('list', fieldName, queryTypeName)
-  }
+  public makeCreateResolver = (fieldName: string, queryTypeName: string = 'Mutation') =>
+    this.createResolver('create', fieldName, queryTypeName)
+
+  public makeDeleteResolver = (fieldName: string, queryTypeName: string = 'Mutation') =>
+    this.createResolver('delete', fieldName, queryTypeName)
+
+  public makeGetResolver = (fieldName: string, queryTypeName: string = 'Query') =>
+    this.createResolver('get', fieldName, queryTypeName)
+
+  public makeUpdateResolver = (fieldName: string, queryTypeName: string = 'Mutation') =>
+    this.createResolver('update', fieldName, queryTypeName)
+
+  public makeListResolver = (fieldName: string, queryTypeName: string = 'Query') =>
+    this.createResolver('list', fieldName, queryTypeName)
 
   // .makeModelTable
   // .makeDataSourceOutput

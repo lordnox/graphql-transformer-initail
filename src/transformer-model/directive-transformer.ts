@@ -2,14 +2,17 @@ import { ObjectTypeDefinitionNode, DirectiveNode, FieldDefinitionNode, InputObje
 import { TransformerContext } from '../transformer-core'
 import { getDirectiveArguments } from '../utils'
 import {
-  ModelResourceIDs,
+  ModelTypeNames,
   makeInputValueDefinition,
   makeNonNullType,
   makeNamedType,
   makeField,
-  ResolverResourceIDs,
+  ResolverTypeNames,
   makeConnectionField,
-  blankObject,
+  makeObjectDefinition,
+  graphqlName,
+  toUpper,
+  ResolverNames,
 } from '../transformer-common'
 import {
   makeCreateInputObject,
@@ -24,8 +27,12 @@ import {
   makeModelXConditionInputObject,
 } from '../definitions'
 import { ResourceFactory } from '../resources'
+import { ModelServiceResolvers } from '.'
 
 export const supportsConditions = (_ctx: TransformerContext) => true
+
+export const INPUT_TYPE_NAME_DATA = 'data'
+export const INPUT_TYPE_NAME_WHERE = 'where'
 
 export interface CreateFunctionArgs {
   def: ObjectTypeDefinitionNode
@@ -33,9 +40,10 @@ export interface CreateFunctionArgs {
   ctx: TransformerContext
   resources: ResourceFactory
   nonModelArray: ObjectTypeDefinitionNode[]
+  resolvers: Partial<ModelServiceResolvers<any, any>>
 }
 
-export const createMutations = ({ def, directive, ctx, resources, nonModelArray }: CreateFunctionArgs) => {
+export const createMutations = ({ def, directive, ctx, resources, nonModelArray, resolvers }: CreateFunctionArgs) => {
   const typeName = def.name.value
 
   const mutationFields: FieldDefinitionNode[] = []
@@ -44,38 +52,22 @@ export const createMutations = ({ def, directive, ctx, resources, nonModelArray 
   const directiveArguments = getDirectiveArguments(directive)
 
   // Configure mutations based on *mutations* argument
-  let shouldMakeCreate = resources.model.resolvers.hasOwnProperty('create')
-  let shouldMakeUpdate = resources.model.resolvers.hasOwnProperty('update')
-  let shouldMakeDelete = resources.model.resolvers.hasOwnProperty('delete')
-
-  let createFieldNameOverride = undefined
-  let updateFieldNameOverride = undefined
-  let deleteFieldNameOverride = undefined
+  const shouldMakeCreate = resolvers.hasOwnProperty('create')
+  const shouldMakeUpdate = resolvers.hasOwnProperty('update')
+  const shouldMakeDelete = resolvers.hasOwnProperty('delete')
 
   // Figure out which mutations to make and if they have name overrides
-  if (directiveArguments.mutations === null) {
-    shouldMakeCreate = false
-    shouldMakeUpdate = false
-    shouldMakeDelete = false
-  } else if (directiveArguments.mutations) {
-    if (!directiveArguments.mutations.create) {
-      shouldMakeCreate = false
-    } else {
-      createFieldNameOverride = directiveArguments.mutations.create
-    }
-    if (!directiveArguments.mutations.update) {
-      shouldMakeUpdate = false
-    } else {
-      updateFieldNameOverride = directiveArguments.mutations.update
-    }
-    if (!directiveArguments.mutations.delete) {
-      shouldMakeDelete = false
-    } else {
-      deleteFieldNameOverride = directiveArguments.mutations.delete
-    }
-  }
+  const createFieldName = directiveArguments.mutations?.create
+    ? directiveArguments.mutations.create
+    : ResolverNames.CreateResolver(typeName)
+  const updateFieldName = directiveArguments.mutations?.update
+    ? directiveArguments.mutations.update
+    : ResolverNames.UpdateResolver(typeName)
+  const deleteFieldName = directiveArguments.mutations?.delete
+    ? directiveArguments.mutations.delete
+    : ResolverNames.DeleteResolver(typeName)
 
-  const conditionInputName = ModelResourceIDs.ModelConditionInputTypeName(typeName)
+  const conditionInputName = ModelTypeNames.ModelConditionInputTypeName(typeName)
 
   // Create the mutations.
   if (shouldMakeCreate) {
@@ -83,14 +75,16 @@ export const createMutations = ({ def, directive, ctx, resources, nonModelArray 
     if (!ctx.getType(createInput.name.value)) {
       ctx.addInput(createInput)
     }
-    const createResolver = resources.makeCreateResolver(def.name.value, createFieldNameOverride)
+    const createResolver = resources.makeCreateResolver(createFieldName)
 
-    const resourceId = ResolverResourceIDs.CreateResolverResourceID(typeName)
+    const resourceId = ResolverTypeNames.CreateResolverResourceID(typeName)
     ctx.setResource(resourceId, createResolver)
 
-    const args = [makeInputValueDefinition('input', makeNonNullType(makeNamedType(createInput.name.value)))]
+    const args = [
+      makeInputValueDefinition(INPUT_TYPE_NAME_DATA, makeNonNullType(makeNamedType(createInput.name.value))),
+    ]
     if (supportsConditions(ctx)) {
-      args.push(makeInputValueDefinition('condition', makeNamedType(conditionInputName)))
+      args.push(makeInputValueDefinition(INPUT_TYPE_NAME_WHERE, makeNamedType(conditionInputName)))
     }
     mutationFields.push(makeField(createResolver.fieldName, args, makeNamedType(def.name.value)))
   }
@@ -100,14 +94,16 @@ export const createMutations = ({ def, directive, ctx, resources, nonModelArray 
     if (!ctx.getType(updateInput.name.value)) {
       ctx.addInput(updateInput)
     }
-    const updateResolver = resources.makeUpdateResolver(def.name.value, updateFieldNameOverride)
+    const updateResolver = resources.makeUpdateResolver(updateFieldName)
 
-    const resourceId = ResolverResourceIDs.UpdateResolverResourceID(typeName)
+    const resourceId = ResolverTypeNames.UpdateResolverResourceID(typeName)
     ctx.setResource(resourceId, updateResolver)
 
-    const args = [makeInputValueDefinition('input', makeNonNullType(makeNamedType(updateInput.name.value)))]
+    const args = [
+      makeInputValueDefinition(INPUT_TYPE_NAME_DATA, makeNonNullType(makeNamedType(updateInput.name.value))),
+    ]
     if (supportsConditions(ctx)) {
-      args.push(makeInputValueDefinition('condition', makeNamedType(conditionInputName)))
+      args.push(makeInputValueDefinition(INPUT_TYPE_NAME_WHERE, makeNamedType(conditionInputName)))
     }
     mutationFields.push(makeField(updateResolver.fieldName, args, makeNamedType(def.name.value)))
   }
@@ -117,14 +113,16 @@ export const createMutations = ({ def, directive, ctx, resources, nonModelArray 
     if (!ctx.getType(deleteInput.name.value)) {
       ctx.addInput(deleteInput)
     }
-    const deleteResolver = resources.makeDeleteResolver(def.name.value, deleteFieldNameOverride)
+    const deleteResolver = resources.makeDeleteResolver(deleteFieldName)
 
-    const resourceId = ResolverResourceIDs.DeleteResolverResourceID(typeName)
+    const resourceId = ResolverTypeNames.DeleteResolverResourceID(typeName)
     ctx.setResource(resourceId, deleteResolver)
 
-    const args = [makeInputValueDefinition('input', makeNonNullType(makeNamedType(deleteInput.name.value)))]
+    const args = [
+      makeInputValueDefinition(INPUT_TYPE_NAME_DATA, makeNonNullType(makeNamedType(deleteInput.name.value))),
+    ]
     if (supportsConditions(ctx)) {
-      args.push(makeInputValueDefinition('condition', makeNamedType(conditionInputName)))
+      args.push(makeInputValueDefinition(INPUT_TYPE_NAME_WHERE, makeNamedType(conditionInputName)))
     }
     mutationFields.push(makeField(deleteResolver.fieldName, args, makeNamedType(def.name.value)))
   }
@@ -135,36 +133,21 @@ export const createMutations = ({ def, directive, ctx, resources, nonModelArray 
   }
 }
 
-export const createQueries = ({ def, directive, ctx, resources }: CreateFunctionArgs) => {
+export const createQueries = ({ def, directive, ctx, resources, resolvers }: CreateFunctionArgs) => {
   const typeName = def.name.value
   const queryFields: FieldDefinitionNode[] = []
   const directiveArguments = getDirectiveArguments(directive)
 
   // Configure queries based on *queries* argument
-  let shouldMakeGet = true
-  let shouldMakeList = true
-  let getFieldNameOverride: string | undefined = undefined
-  let listFieldNameOverride: string | undefined = undefined
+  const shouldMakeGet = resolvers.hasOwnProperty('get')
+  const shouldMakeList = resolvers.hasOwnProperty('list')
 
-  // Figure out which queries to make and if they have name overrides.
-  // If queries is undefined (default), create all queries
-  // If queries is explicetly set to null, do not create any
-  // else if queries is defined, check overrides
-  if (directiveArguments.queries === null) {
-    shouldMakeGet = false
-    shouldMakeList = false
-  } else if (directiveArguments.queries) {
-    if (!directiveArguments.queries.get) {
-      shouldMakeGet = false
-    } else {
-      getFieldNameOverride = directiveArguments.queries.get
-    }
-    if (!directiveArguments.queries.list) {
-      shouldMakeList = false
-    } else {
-      listFieldNameOverride = directiveArguments.queries.list
-    }
-  }
+  const getFieldName = directiveArguments.queries?.get
+    ? directiveArguments.queries.get
+    : ResolverNames.GetResolver(typeName)
+  const listFieldName = directiveArguments.queries?.list
+    ? directiveArguments.queries.list
+    : ResolverNames.ListResolver(typeName)
 
   if (shouldMakeList) {
     if (!typeExist('ModelSortDirection', ctx)) {
@@ -175,13 +158,9 @@ export const createQueries = ({ def, directive, ctx, resources }: CreateFunction
 
   // Create get queries
   if (shouldMakeGet) {
-    const getResolver = resources.makeGetResolver(
-      def.name.value,
-      getFieldNameOverride,
-      ctx.getTypenameByOperation('query')
-    )
+    const getResolver = resources.makeGetResolver(getFieldName, ctx.getTypenameByOperation('query'))
 
-    const resourceId = ResolverResourceIDs.GetResolverResourceID(typeName)
+    const resourceId = ResolverTypeNames.GetResolverResourceID(typeName)
     ctx.setResource(resourceId, getResolver)
 
     queryFields.push(
@@ -197,12 +176,8 @@ export const createQueries = ({ def, directive, ctx, resources }: CreateFunction
     generateModelXConnectionType(ctx, def)
 
     // Create the list resolver
-    const listResolver = resources.makeListResolver(
-      def.name.value,
-      listFieldNameOverride,
-      ctx.getTypenameByOperation('query')
-    )
-    const resourceId = ResolverResourceIDs.ListResolverResourceID(typeName)
+    const listResolver = resources.makeListResolver(listFieldName, ctx.getTypenameByOperation('query'))
+    const resourceId = ResolverTypeNames.ListResolverResourceID(typeName)
     ctx.setResource(resourceId, listResolver)
 
     queryFields.push(makeConnectionField(listResolver.fieldName, def.name.value))
@@ -246,9 +221,9 @@ export const createSubscriptions = ({ def, directive, ctx }: CreateFunctionArgs)
   const directiveArguments = getDirectiveArguments(directive)
 
   const subscriptionsArgument = directiveArguments.subscriptions
-  const createResolver = ctx.getResource(ResolverResourceIDs.CreateResolverResourceID(typeName))
-  const updateResolver = ctx.getResource(ResolverResourceIDs.UpdateResolverResourceID(typeName))
-  const deleteResolver = ctx.getResource(ResolverResourceIDs.DeleteResolverResourceID(typeName))
+  const createResolver = ctx.getResource(ResolverTypeNames.CreateResolverResourceID(typeName))
+  const updateResolver = ctx.getResource(ResolverTypeNames.UpdateResolverResourceID(typeName))
+  const deleteResolver = ctx.getResource(ResolverTypeNames.DeleteResolverResourceID(typeName))
 
   if (subscriptionsArgument === null) {
     return
@@ -289,19 +264,19 @@ export const createSubscriptions = ({ def, directive, ctx }: CreateFunctionArgs)
   } else {
     // Add the default subscriptions
     if (createResolver) {
-      const onCreateField = makeSubscriptionField(ModelResourceIDs.ModelOnCreateSubscriptionName(typeName), typeName, [
+      const onCreateField = makeSubscriptionField(ModelTypeNames.ModelOnCreateSubscriptionName(typeName), typeName, [
         createResolver.fieldName,
       ])
       subscriptionFields.push(onCreateField)
     }
     if (updateResolver) {
-      const onUpdateField = makeSubscriptionField(ModelResourceIDs.ModelOnUpdateSubscriptionName(typeName), typeName, [
+      const onUpdateField = makeSubscriptionField(ModelTypeNames.ModelOnUpdateSubscriptionName(typeName), typeName, [
         updateResolver.fieldName,
       ])
       subscriptionFields.push(onUpdateField)
     }
     if (deleteResolver) {
-      const onDeleteField = makeSubscriptionField(ModelResourceIDs.ModelOnDeleteSubscriptionName(typeName), typeName, [
+      const onDeleteField = makeSubscriptionField(ModelTypeNames.ModelOnDeleteSubscriptionName(typeName), typeName, [
         deleteResolver.fieldName,
       ])
       subscriptionFields.push(onDeleteField)
@@ -318,13 +293,13 @@ export const generateModelXConnectionType = (
   def: ObjectTypeDefinitionNode,
   isSync: Boolean = false
 ) => {
-  const tableXConnectionName = ModelResourceIDs.ModelConnectionTypeName(def.name.value)
+  const tableXConnectionName = ModelTypeNames.ModelConnectionTypeName(def.name.value)
   if (typeExist(tableXConnectionName, ctx)) {
     return
   }
 
   // Create the ModelXConnection
-  const connectionType = blankObject(tableXConnectionName)
+  const connectionType = makeObjectDefinition(tableXConnectionName)
   ctx.addObject(connectionType)
   ctx.addObjectExtension(makeModelConnectionType(def.name.value, isSync))
 }
@@ -383,7 +358,7 @@ export const generateConditionInputs = (ctx: TransformerContext, def: ObjectType
 export const updateMutationConditionInput = (ctx: TransformerContext, type: ObjectTypeDefinitionNode) => {
   if (supportsConditions(ctx)) {
     // Get the existing ModelXConditionInput
-    const tableXMutationConditionInputName = ModelResourceIDs.ModelConditionInputTypeName(type.name.value)
+    const tableXMutationConditionInputName = ModelTypeNames.ModelConditionInputTypeName(type.name.value)
 
     if (typeExist(tableXMutationConditionInputName, ctx)) {
       const tableXMutationConditionInput = <InputObjectTypeDefinitionNode>ctx.getType(tableXMutationConditionInputName)

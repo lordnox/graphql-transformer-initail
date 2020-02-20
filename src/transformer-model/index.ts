@@ -13,16 +13,23 @@ import {
   updateMutationConditionInput,
   CreateFunctionArgs,
 } from './directive-transformer'
+import { CreateArgs, DeleteArgs, UpdateArgs, GetArgs, ListArgs } from './types'
 
-type Resolver<Context> = IFieldResolver<any, Context>
+export interface ModelServiceResolvers<Context, Type, Source = any> {
+  create: IFieldResolver<Source, Context, CreateArgs<Type>>
+  update: IFieldResolver<Source, Context, UpdateArgs<Type>>
+  get: IFieldResolver<Source, Context, GetArgs<Type>>
+  list: IFieldResolver<Source, Context, ListArgs<Type>>
+  delete: IFieldResolver<Source, Context, DeleteArgs<Type>>
+}
 
-export interface ModelService<Context, Source = any> {
-  resolvers?: Partial<Record<'get' | 'list' | 'update' | 'create' | 'delete', Resolver<Context>>>
-  conditions?: Record<string, Resolver<Context>>
+export interface ModelService<Context, Type> {
+  resolvers: Partial<ModelServiceResolvers<Context, Type>>
+  conditions?: Partial<ModelServiceResolvers<Context, Type, Type>>
 }
 
 export interface ModelTransformerOptions<Context> {
-  models: Record<string, ModelService<Context>>
+  models: Record<string, ModelService<Context, any>>
 }
 
 /**
@@ -37,14 +44,7 @@ export class ModelTransformer<Context> extends Transformer {
     super(
       'ModelTransformer',
       gql`
-        directive @model(
-          modelName: String
-          queries: ModelQueryMap
-          mutations: ModelMutationMap
-          subscriptions: ModelSubscriptionMap
-          # Condition needs to be found in the models resolver
-          condition: String
-        ) on OBJECT
+        directive @model(modelName: String) on OBJECT
 
         input ModelMutationMap {
           create: String
@@ -56,20 +56,19 @@ export class ModelTransformer<Context> extends Transformer {
           get: String
           list: String
         }
-
-        input ModelSubscriptionMap {
-          onCreate: [String]
-          onUpdate: [String]
-          onDelete: [String]
-          level: ModelSubscriptionLevel
-        }
-
-        enum ModelSubscriptionLevel {
-          off
-          public
-          on
-        }
       `
+      // input ModelSubscriptionMap {
+      //   onCreate: [String]
+      //   onUpdate: [String]
+      //   onDelete: [String]
+      //   level: ModelSubscriptionLevel
+      // }
+
+      // enum ModelSubscriptionLevel {
+      //   off
+      //   public
+      //   on
+      // }
     )
     this.opts = opts
   }
@@ -97,14 +96,19 @@ export class ModelTransformer<Context> extends Transformer {
       throw new Error(
         `ModelDirective could not find a corresponding model ${modelName}, use (modelName: String) to set the correct value, or create it in the { models: [] } field.`
       )
-    this.resources = new ResourceFactory(model)
+    const resolvers = model.resolvers
+    if (!(resolvers.create || resolvers.delete || resolvers.get || resolvers.list || resolvers.update))
+      throw new Error(`Model ${modelName} does not provide any resolvers, this model is invalid as a model`)
+
+    const resources = new ResourceFactory(model)
 
     const createFunctionArgs: CreateFunctionArgs = {
       def,
       directive,
       ctx,
-      resources: this.resources,
+      resources,
       nonModelArray,
+      resolvers,
     }
 
     createQueries(createFunctionArgs)

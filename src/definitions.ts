@@ -20,17 +20,17 @@ import {
   graphqlName,
   makeListType,
   isScalar,
-  getBaseType,
-  blankObjectExtension,
+  getBaseTypeName,
   extensionWithFields,
   makeField,
   makeInputValueDefinition,
-  ModelResourceIDs,
+  ModelTypeNames,
   makeDirective,
   makeArgument,
   makeValueNode,
   withNamedNodeNamed,
   isListType,
+  objectExtension,
 } from './transformer-common'
 import { TransformerContext } from './transformer-core'
 
@@ -70,7 +70,7 @@ export function getNonModelObjectArray(
   // loop over all fields in the object, picking out all nonscalars that are not @model types
   for (const field of node.fields || []) {
     if (!isScalar(field.type)) {
-      const def = ctx.getType(getBaseType(field.type))
+      const def = ctx.getType(getBaseTypeName(field.type))
 
       if (
         def &&
@@ -94,13 +94,13 @@ export function makeNonModelInputObject(
   nonModelTypes: ObjectTypeDefinitionNode[],
   ctx: TransformerContext
 ): InputObjectTypeDefinitionNode {
-  const name = ModelResourceIDs.NonModelInputObjectName(obj.name.value)
+  const name = ModelTypeNames.NonModelInputObjectName(obj.name.value)
   const fields: InputValueDefinitionNode[] = [...(obj.fields || [])]
     .filter((field: FieldDefinitionNode) => {
-      const fieldType = ctx.getType(getBaseType(field.type))
+      const fieldType = ctx.getType(getBaseTypeName(field.type))
       if (
         isScalar(field.type) ||
-        nonModelTypes.find(e => e.name.value === getBaseType(field.type)) ||
+        nonModelTypes.find(e => e.name.value === getBaseTypeName(field.type)) ||
         (fieldType && fieldType.kind === Kind.ENUM_TYPE_DEFINITION)
       ) {
         return true
@@ -108,8 +108,8 @@ export function makeNonModelInputObject(
       return false
     })
     .map((field: FieldDefinitionNode) => {
-      const type = nonModelTypes.find(e => e.name.value === getBaseType(field.type))
-        ? withNamedNodeNamed(field.type, ModelResourceIDs.NonModelInputObjectName(getBaseType(field.type)))
+      const type = nonModelTypes.find(e => e.name.value === getBaseTypeName(field.type))
+        ? withNamedNodeNamed(field.type, ModelTypeNames.NonModelInputObjectName(getBaseTypeName(field.type)))
         : field.type
       return {
         kind: Kind.INPUT_VALUE_DEFINITION,
@@ -141,13 +141,13 @@ export function makeCreateInputObject(
   nonModelTypes: ObjectTypeDefinitionNode[],
   ctx: TransformerContext
 ): InputObjectTypeDefinitionNode {
-  const name = ModelResourceIDs.ModelCreateInputObjectName(obj.name.value)
+  const name = ModelTypeNames.ModelCreateInputObjectName(obj.name.value)
   const fields: InputValueDefinitionNode[] = [...(obj.fields || [])]
     .filter((field: FieldDefinitionNode) => {
-      const fieldType = ctx.getType(getBaseType(field.type))
+      const fieldType = ctx.getType(getBaseTypeName(field.type))
       if (
         isScalar(field.type) ||
-        nonModelTypes.find(e => e.name.value === getBaseType(field.type)) ||
+        nonModelTypes.find(e => e.name.value === getBaseTypeName(field.type)) ||
         (fieldType && fieldType.kind === Kind.ENUM_TYPE_DEFINITION)
       ) {
         return true
@@ -167,8 +167,8 @@ export function makeCreateInputObject(
           },
         }
       } else {
-        type = nonModelTypes.find(e => e.name.value === getBaseType(field.type))
-          ? withNamedNodeNamed(field.type, ModelResourceIDs.NonModelInputObjectName(getBaseType(field.type)))
+        type = nonModelTypes.find(e => e.name.value === getBaseTypeName(field.type))
+          ? withNamedNodeNamed(field.type, ModelTypeNames.NonModelInputObjectName(getBaseTypeName(field.type)))
           : field.type
       }
       return {
@@ -203,13 +203,13 @@ export function makeUpdateInputObject(
   ctx: TransformerContext,
   isSync: boolean = false
 ): InputObjectTypeDefinitionNode {
-  const name = ModelResourceIDs.ModelUpdateInputObjectName(obj.name.value)
+  const name = ModelTypeNames.ModelUpdateInputObjectName(obj.name.value)
   const fields: InputValueDefinitionNode[] = [...(obj.fields || [])]
     .filter(f => {
-      const fieldType = ctx.getType(getBaseType(f.type))
+      const fieldType = ctx.getType(getBaseTypeName(f.type))
       if (
         isScalar(f.type) ||
-        nonModelTypes.find(e => e.name.value === getBaseType(f.type)) ||
+        nonModelTypes.find(e => e.name.value === getBaseTypeName(f.type)) ||
         (fieldType && fieldType.kind === Kind.ENUM_TYPE_DEFINITION)
       ) {
         return true
@@ -223,8 +223,8 @@ export function makeUpdateInputObject(
       } else {
         type = unwrapNonNull(field.type)
       }
-      type = nonModelTypes.find(e => e.name.value === getBaseType(field.type))
-        ? withNamedNodeNamed(type, ModelResourceIDs.NonModelInputObjectName(getBaseType(field.type)))
+      type = nonModelTypes.find(e => e.name.value === getBaseTypeName(field.type))
+        ? withNamedNodeNamed(type, ModelTypeNames.NonModelInputObjectName(getBaseTypeName(field.type)))
         : type
       return {
         kind: Kind.INPUT_VALUE_DEFINITION,
@@ -258,7 +258,7 @@ export function makeDeleteInputObject(
   obj: ObjectTypeDefinitionNode,
   isSync: boolean = false
 ): InputObjectTypeDefinitionNode {
-  const name = ModelResourceIDs.ModelDeleteInputObjectName(obj.name.value)
+  const name = ModelTypeNames.ModelDeleteInputObjectName(obj.name.value)
   const fields: InputValueDefinitionNode[] = [
     {
       kind: Kind.INPUT_VALUE_DEFINITION,
@@ -296,21 +296,21 @@ export function makeModelXFilterInputObject(
   ctx: TransformerContext,
   supportsConditions: Boolean
 ): InputObjectTypeDefinitionNode {
-  const name = ModelResourceIDs.ModelFilterInputTypeName(obj.name.value)
+  const name = ModelTypeNames.ModelFilterInputTypeName(obj.name.value)
   const fields: InputValueDefinitionNode[] = [...(obj.fields || [])]
     .filter((field: FieldDefinitionNode) => {
-      const fieldType = ctx.getType(getBaseType(field.type))
+      const fieldType = ctx.getType(getBaseTypeName(field.type))
       return isScalar(field.type) || (fieldType && fieldType.kind === Kind.ENUM_TYPE_DEFINITION)
     })
     .map((field: FieldDefinitionNode) => {
-      const baseType = getBaseType(field.type)
+      const baseType = getBaseTypeName(field.type)
       const fieldType = ctx.getType(baseType)
       const isList = isListType(field.type)
       const isEnumType = fieldType && fieldType.kind === Kind.ENUM_TYPE_DEFINITION
       const filterTypeName =
         isEnumType && isList
-          ? ModelResourceIDs.ModelFilterListInputTypeName(baseType, !supportsConditions)
-          : ModelResourceIDs.ModelScalarFilterInputTypeName(baseType, !supportsConditions)
+          ? ModelTypeNames.ModelFilterListInputTypeName(baseType, !supportsConditions)
+          : ModelTypeNames.ModelScalarFilterInputTypeName(baseType, !supportsConditions)
 
       return {
         kind: Kind.INPUT_VALUE_DEFINITION,
@@ -379,21 +379,21 @@ export function makeModelXConditionInputObject(
   ctx: TransformerContext,
   supportsConditions: Boolean
 ): InputObjectTypeDefinitionNode {
-  const name = ModelResourceIDs.ModelConditionInputTypeName(obj.name.value)
+  const name = ModelTypeNames.ModelConditionInputTypeName(obj.name.value)
   const fields: InputValueDefinitionNode[] = [...(obj.fields || [])]
     .filter((field: FieldDefinitionNode) => {
-      const fieldType = ctx.getType(getBaseType(field.type))
+      const fieldType = ctx.getType(getBaseTypeName(field.type))
       return isScalar(field.type) || (fieldType && fieldType.kind === Kind.ENUM_TYPE_DEFINITION)
     })
     .map((field: FieldDefinitionNode) => {
-      const baseType = getBaseType(field.type)
+      const baseType = getBaseTypeName(field.type)
       const fieldType = ctx.getType(baseType)
       const isList = isListType(field.type)
       const isEnumType = fieldType && fieldType.kind === Kind.ENUM_TYPE_DEFINITION
       const conditionTypeName =
         isEnumType && isList
-          ? ModelResourceIDs.ModelFilterListInputTypeName(baseType, !supportsConditions)
-          : ModelResourceIDs.ModelScalarFilterInputTypeName(baseType, !supportsConditions)
+          ? ModelTypeNames.ModelFilterListInputTypeName(baseType, !supportsConditions)
+          : ModelTypeNames.ModelScalarFilterInputTypeName(baseType, !supportsConditions)
 
       return {
         kind: Kind.INPUT_VALUE_DEFINITION,
@@ -464,15 +464,15 @@ export function makeEnumFilterInputObjects(
 ): InputObjectTypeDefinitionNode[] {
   return (obj.fields || [])
     .filter((field: FieldDefinitionNode) => {
-      const fieldType = ctx.getType(getBaseType(field.type))
+      const fieldType = ctx.getType(getBaseTypeName(field.type))
       return fieldType && fieldType.kind === Kind.ENUM_TYPE_DEFINITION
     })
     .map((enumField: FieldDefinitionNode) => {
-      const typeName = getBaseType(enumField.type)
+      const typeName = getBaseTypeName(enumField.type)
       const isList = isListType(enumField.type)
       const name = isList
-        ? ModelResourceIDs.ModelFilterListInputTypeName(typeName, !supportsConditions)
-        : ModelResourceIDs.ModelScalarFilterInputTypeName(typeName, !supportsConditions)
+        ? ModelTypeNames.ModelFilterListInputTypeName(typeName, !supportsConditions)
+        : ModelTypeNames.ModelScalarFilterInputTypeName(typeName, !supportsConditions)
       const fields = []
 
       fields.push({
@@ -557,7 +557,7 @@ export function makeModelScalarFilterInputObject(
   type: string,
   supportsConditions: Boolean
 ): InputObjectTypeDefinitionNode {
-  const name = ModelResourceIDs.ModelFilterScalarInputTypeName(type, !supportsConditions)
+  const name = ModelTypeNames.ModelFilterScalarInputTypeName(type, !supportsConditions)
   const conditions = getScalarConditions(type)
   const fields: InputValueDefinitionNode[] = conditions.map((condition: string) => ({
     kind: Kind.INPUT_VALUE_DEFINITION,
@@ -617,7 +617,7 @@ function getScalarConditions(type: string): string[] {
 }
 
 function makeSizeInputType(): InputObjectTypeDefinitionNode {
-  const name = ModelResourceIDs.ModelSizeInputTypeName()
+  const name = ModelTypeNames.ModelSizeInputTypeName()
   const fields: InputValueDefinitionNode[] = SIZE_CONDITIONS.map((condition: string) => ({
     kind: Kind.INPUT_VALUE_DEFINITION,
     name: { kind: 'Name' as 'Name', value: condition },
@@ -678,7 +678,7 @@ function makeFunctionInputFields(typeName: string): InputValueDefinitionNode[] {
     fields.push({
       kind: Kind.INPUT_VALUE_DEFINITION,
       name: { kind: 'Name' as 'Name', value: 'attributeType' },
-      type: makeNamedType(ModelResourceIDs.ModelAttributeTypesName()),
+      type: makeNamedType(ModelTypeNames.ModelAttributeTypesName()),
       // TODO: Service does not support new style descriptions so wait.
       // description: field.description,
       directives: [],
@@ -689,7 +689,7 @@ function makeFunctionInputFields(typeName: string): InputValueDefinitionNode[] {
     fields.push({
       kind: Kind.INPUT_VALUE_DEFINITION,
       name: { kind: 'Name' as 'Name', value: 'size' },
-      type: makeNamedType(ModelResourceIDs.ModelSizeInputTypeName()),
+      type: makeNamedType(ModelTypeNames.ModelSizeInputTypeName()),
       // TODO: Service does not support new style descriptions so wait.
       // description: field.description,
       directives: [],
@@ -700,8 +700,8 @@ function makeFunctionInputFields(typeName: string): InputValueDefinitionNode[] {
 }
 
 export function makeModelConnectionType(typeName: string, isSync: Boolean = false): ObjectTypeExtensionNode {
-  const connectionName = ModelResourceIDs.ModelConnectionTypeName(typeName)
-  let connectionTypeExtension = blankObjectExtension(connectionName)
+  const connectionName = ModelTypeNames.ModelConnectionTypeName(typeName)
+  let connectionTypeExtension = objectExtension(connectionName)
   connectionTypeExtension = extensionWithFields(connectionTypeExtension, [
     makeField('items', [], makeListType(makeNamedType(typeName))),
   ])
@@ -746,7 +746,7 @@ export function makeModelConnectionField(
   directives?: DirectiveNode[]
 ): FieldDefinitionNode {
   const args = [
-    makeInputValueDefinition('filter', makeNamedType(ModelResourceIDs.ModelFilterInputTypeName(returnTypeName))),
+    makeInputValueDefinition('filter', makeNamedType(ModelTypeNames.ModelFilterInputTypeName(returnTypeName))),
     makeInputValueDefinition('sortDirection', makeNamedType('ModelSortDirection')),
     makeInputValueDefinition('limit', makeNamedType('Int')),
     makeInputValueDefinition('nextToken', makeNamedType('String')),
@@ -755,18 +755,18 @@ export function makeModelConnectionField(
     let namedType: NamedTypeNode
     if (sortKeyInfo.typeName === 'Composite') {
       namedType = makeNamedType(
-        ModelResourceIDs.ModelCompositeKeyConditionInputTypeName(
+        ModelTypeNames.ModelCompositeKeyConditionInputTypeName(
           sortKeyInfo.model as string,
           toUpper(sortKeyInfo.keyName as string)
         )
       )
     } else {
-      namedType = makeNamedType(ModelResourceIDs.ModelKeyConditionInputTypeName(sortKeyInfo.typeName))
+      namedType = makeNamedType(ModelTypeNames.ModelKeyConditionInputTypeName(sortKeyInfo.typeName))
     }
 
     args.unshift(makeInputValueDefinition(sortKeyInfo.fieldName, namedType))
   }
-  return makeField(fieldName, args, makeNamedType(ModelResourceIDs.ModelConnectionTypeName(returnTypeName)), directives)
+  return makeField(fieldName, args, makeNamedType(ModelTypeNames.ModelConnectionTypeName(returnTypeName)), directives)
 }
 
 export function makeScalarFilterInputs(supportsConditions: Boolean): InputObjectTypeDefinitionNode[] {

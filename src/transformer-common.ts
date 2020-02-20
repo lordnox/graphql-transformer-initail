@@ -18,11 +18,12 @@ import {
   ValueNode,
   InputObjectTypeDefinitionNode,
 } from 'graphql'
+import { INPUT_TYPE_NAME_WHERE } from './transformer-model/directive-transformer'
 
 type ScalarMap = {
   [k: string]: 'String' | 'Int' | 'Float' | 'Boolean' | 'ID'
 }
-export const STANDARD_SCALARS: ScalarMap = {
+export const DEFAULT_SCALARS: ScalarMap = {
   String: 'String',
   Int: 'Int',
   Float: 'Float',
@@ -30,30 +31,8 @@ export const STANDARD_SCALARS: ScalarMap = {
   ID: 'ID',
 }
 
-const OTHER_SCALARS: ScalarMap = {
-  BigInt: 'Int',
-  Double: 'Float',
-}
-
-export const DEFAULT_SCALARS: ScalarMap = {
-  ...STANDARD_SCALARS,
-  ...OTHER_SCALARS,
-}
-
-export const NUMERIC_SCALARS: { [k: string]: boolean } = {
-  BigInt: true,
-  Int: true,
-  Float: true,
-  Double: true,
-  AWSTimestamp: true,
-}
-
-export const MAP_SCALARS: { [k: string]: boolean } = {
-  AWSJSON: true,
-}
-
 export function attributeTypeFromScalar(scalar: TypeNode) {
-  const baseType = getBaseType(scalar)
+  const baseType = getBaseTypeName(scalar)
   const baseScalar = DEFAULT_SCALARS[baseType]
   if (!baseScalar) {
     throw new Error(`Expected scalar and got ${baseType}`)
@@ -72,17 +51,9 @@ export function attributeTypeFromScalar(scalar: TypeNode) {
   }
 }
 
-export function isScalar(type: TypeNode): boolean {
-  if (type.kind === Kind.NON_NULL_TYPE) {
-    return isScalar(type.type)
-  } else if (type.kind === Kind.LIST_TYPE) {
-    return isScalar(type.type)
-  } else {
-    return Boolean(DEFAULT_SCALARS[type.name.value])
-  }
-}
+export const isScalar = (type: TypeNode) => Boolean(DEFAULT_SCALARS[getBaseType(type).name.value])
 
-export function isScalarOrEnum(type: TypeNode, enums: EnumTypeDefinitionNode[]): boolean {
+export const isScalarOrEnum = (type: TypeNode, enums: EnumTypeDefinitionNode[]): boolean => {
   if (type.kind === Kind.NON_NULL_TYPE) {
     return isScalarOrEnum(type.type, enums)
   } else if (type.kind === Kind.LIST_TYPE) {
@@ -97,48 +68,31 @@ export function isScalarOrEnum(type: TypeNode, enums: EnumTypeDefinitionNode[]):
   }
 }
 
-export function getBaseType(type: TypeNode): string {
-  if (type.kind === Kind.NON_NULL_TYPE) {
-    return getBaseType(type.type)
-  } else if (type.kind === Kind.LIST_TYPE) {
-    return getBaseType(type.type)
-  } else {
-    return type.name.value
-  }
+export const getBaseType = (type: TypeNode): NamedTypeNode => {
+  // if it is a null type, strip it and try again
+  if (type.kind === Kind.NON_NULL_TYPE) return getBaseType(type.type)
+  // if it is a list type, strip it and try again
+  if (type.kind === Kind.LIST_TYPE) return getBaseType(type.type)
+  // else we do have a NamedTypeNode
+  return type
 }
 
-export function isListType(type: TypeNode): boolean {
-  if (type.kind === Kind.NON_NULL_TYPE) {
-    return isListType(type.type)
-  } else if (type.kind === Kind.LIST_TYPE) {
-    return true
-  } else {
-    return false
-  }
-}
+export const getBaseTypeName = (type: TypeNode) => getBaseType(type).name.value
 
-export function isNonNullType(type: TypeNode): boolean {
-  return type.kind === Kind.NON_NULL_TYPE
-}
+export const isListType = (type: TypeNode): boolean =>
+  isNonNullType(type) ? isListType(type.type) : type.kind === Kind.LIST_TYPE
+
+export const isNonNullType = (type: TypeNode): type is NonNullTypeNode => type.kind === Kind.NON_NULL_TYPE
 
 export function getDirectiveArgument(directive: DirectiveNode, arg: string, dflt?: any) {
   const argument = directive.arguments?.find(a => a.name.value === arg)
   return argument ? valueFromASTUntyped(argument.value) : dflt
 }
 
-export function unwrapNonNull(type: TypeNode): NamedTypeNode | ListTypeNode {
-  if (type.kind === 'NonNullType') {
-    return unwrapNonNull(type.type)
-  }
-  return type
-}
+export const unwrapNonNull = (type: TypeNode): NamedTypeNode | ListTypeNode =>
+  isNonNullType(type) ? unwrapNonNull(type.type) : type
 
-export function wrapNonNull(type: TypeNode) {
-  if (type.kind !== 'NonNullType') {
-    return makeNonNullType(type)
-  }
-  return type
-}
+export const wrapNonNull = (type: TypeNode) => (isNonNullType(type) ? type : makeNonNullType(type))
 
 export function makeOperationType(operation: OperationTypeNode, type: string): OperationTypeDefinitionNode {
   return {
@@ -147,7 +101,7 @@ export function makeOperationType(operation: OperationTypeNode, type: string): O
     type: {
       kind: 'NamedType',
       name: {
-        kind: 'Name',
+        kind: Kind.NAME,
         value: type,
       },
     },
@@ -162,40 +116,14 @@ export function makeSchema(operationTypes: OperationTypeDefinitionNode[]): Schem
   }
 }
 
-export function blankObject(name: string): ObjectTypeDefinitionNode {
-  return {
-    kind: 'ObjectTypeDefinition',
-    name: {
-      kind: 'Name',
-      value: name,
-    },
-    fields: [],
-    directives: [],
-    interfaces: [],
-  }
-}
-
 export function objectExtension(name: string, fields: FieldDefinitionNode[] = []): ObjectTypeExtensionNode {
   return {
     kind: Kind.OBJECT_TYPE_EXTENSION,
     name: {
-      kind: 'Name',
+      kind: Kind.NAME,
       value: name,
     },
     fields,
-    directives: [],
-    interfaces: [],
-  }
-}
-
-export function blankObjectExtension(name: string): ObjectTypeExtensionNode {
-  return {
-    kind: Kind.OBJECT_TYPE_EXTENSION,
-    name: {
-      kind: 'Name',
-      value: name,
-    },
-    fields: [],
     directives: [],
     interfaces: [],
   }
@@ -211,10 +139,7 @@ export function extensionWithFields(
   }
 }
 
-export function extensionWithDirectives(
-  object: ObjectTypeExtensionNode,
-  directives: DirectiveNode[]
-): ObjectTypeExtensionNode {
+export function extensionWithDirectives(object: ObjectTypeExtensionNode, directives: DirectiveNode[]) {
   if (directives && directives.length > 0) {
     const newDirectives = []
 
@@ -232,10 +157,7 @@ export function extensionWithDirectives(
   return object
 }
 
-export function extendFieldWithDirectives(
-  field: FieldDefinitionNode,
-  directives: DirectiveNode[]
-): FieldDefinitionNode {
+export function extendFieldWithDirectives(field: FieldDefinitionNode, directives: DirectiveNode[]) {
   if (directives && directives.length > 0) {
     const newDirectives = []
 
@@ -258,9 +180,9 @@ export function makeInputObjectDefinition(
   inputs: InputValueDefinitionNode[]
 ): InputObjectTypeDefinitionNode {
   return {
-    kind: 'InputObjectTypeDefinition',
+    kind: Kind.INPUT_OBJECT_TYPE_DEFINITION,
     name: {
-      kind: 'Name',
+      kind: Kind.NAME,
       value: name,
     },
     fields: inputs,
@@ -268,11 +190,11 @@ export function makeInputObjectDefinition(
   }
 }
 
-export function makeObjectDefinition(name: string, inputs: FieldDefinitionNode[]): ObjectTypeDefinitionNode {
+export function makeObjectDefinition(name: string, inputs: FieldDefinitionNode[] = []): ObjectTypeDefinitionNode {
   return {
     kind: Kind.OBJECT_TYPE_DEFINITION,
     name: {
-      kind: 'Name',
+      kind: Kind.NAME,
       value: name,
     },
     fields: inputs,
@@ -289,7 +211,7 @@ export function makeField(
   return {
     kind: Kind.FIELD_DEFINITION,
     name: {
-      kind: 'Name',
+      kind: Kind.NAME,
       value: name,
     },
     arguments: args,
@@ -313,7 +235,7 @@ export function makeArgument(name: string, value: ValueNode): ArgumentNode {
   return {
     kind: Kind.ARGUMENT,
     name: {
-      kind: 'Name',
+      kind: Kind.NAME,
       value: name,
     },
     value,
@@ -356,7 +278,7 @@ export function makeInputValueDefinition(name: string, type: TypeNode): InputVal
   return {
     kind: Kind.INPUT_VALUE_DEFINITION,
     name: {
-      kind: 'Name',
+      kind: Kind.NAME,
       value: name,
     },
     type,
@@ -366,9 +288,9 @@ export function makeInputValueDefinition(name: string, type: TypeNode): InputVal
 
 export function makeNamedType(name: string): NamedTypeNode {
   return {
-    kind: 'NamedType',
+    kind: Kind.NAMED_TYPE,
     name: {
-      kind: 'Name',
+      kind: Kind.NAME,
       value: name,
     },
   }
@@ -383,7 +305,7 @@ export function makeNonNullType(type: NamedTypeNode | ListTypeNode): NonNullType
 
 export function makeListType(type: TypeNode): TypeNode {
   return {
-    kind: 'ListType',
+    kind: Kind.LIST_TYPE,
     type,
   }
 }
@@ -411,14 +333,20 @@ export function withNamedNodeNamed(t: TypeNode, n: string): TypeNode {
   }
 }
 
-export function plurality(val: string): string {
+export const singularity = (val: string) => {
+  const trimmed = val.trim()
+  if (!trimmed || trimmed[trimmed.length - 1] !== 's') return trimmed
+  return trimmed.substr(0, -1)
+}
+
+export const plurality = (val: string) => {
   if (!val.trim()) {
     return ''
   }
   return val.concat('s')
 }
 
-export function graphqlName(val: string): string {
+export const graphqlName = (val: string) => {
   if (!val.trim()) {
     return ''
   }
@@ -426,91 +354,25 @@ export function graphqlName(val: string): string {
   return cleaned
 }
 
-export function simplifyName(val: string): string {
-  if (!val.trim()) {
-    return ''
-  }
-  return toPascalCase(
-    val
-      .replace(/-?_?\${[^}]*}/g, '')
-      .replace(/^[^_A-Za-z]+|[^_0-9A-Za-z]/g, '|')
-      .split('|')
-  )
-}
-
 export function toUpper(word: string): string {
   return word.charAt(0).toUpperCase() + word.slice(1)
 }
 
-export function toCamelCase(words: string[]): string {
-  const formatted = words.map((w, i) =>
-    i === 0 ? w.charAt(0).toLowerCase() + w.slice(1) : w.charAt(0).toUpperCase() + w.slice(1)
-  )
-  return formatted.join('')
-}
-
-export function toPascalCase(words: string[]): string {
-  const formatted = words.map((w, i) => w.charAt(0).toUpperCase() + w.slice(1))
-  return formatted.join('')
-}
-
-export class ModelResourceIDs {
-  static ModelTableResourceID = (typeName: string) => `${typeName}Table`
-  static ModelTableStreamArn = (typeName: string) => `${typeName}TableStreamArn`
-  static ModelTableDataSourceID = (typeName: string) => `${typeName}DataSource`
-  static ModelTableIAMRoleID = (typeName: string) => `${typeName}IAMRole`
-  static ModelFilterInputTypeName(name: string) {
-    const nameOverride = DEFAULT_SCALARS[name]
-    if (nameOverride) {
-      return `Model${nameOverride}FilterInput`
-    }
-    return `Model${name}FilterInput`
-  }
-  static ModelFilterScalarInputTypeName(name: string, includeFilter: Boolean) {
-    const nameOverride = DEFAULT_SCALARS[name]
-    if (nameOverride) {
-      return `Model${nameOverride}${includeFilter ? 'Filter' : ''}Input`
-    }
-    return `Model${name}${includeFilter ? 'Filter' : ''}Input`
-  }
-  static ModelConditionInputTypeName(name: string) {
-    const nameOverride = DEFAULT_SCALARS[name]
-    if (nameOverride) {
-      return `Model${nameOverride}ConditionInput`
-    }
-    return `Model${name}ConditionInput`
-  }
-  static ModelKeyConditionInputTypeName(name: string) {
-    const nameOverride = DEFAULT_SCALARS[name]
-    if (nameOverride) {
-      return `Model${nameOverride}KeyConditionInput`
-    }
-    return `Model${name}KeyConditionInput`
-  }
-  static ModelCompositeKeyArgumentName = (keyFieldNames: string[]) =>
-    toCamelCase(keyFieldNames.map(n => graphqlName(n)))
-  static ModelCompositeKeySeparator = () => '#'
-  static ModelCompositeAttributeName = (keyFieldNames: string[]) =>
-    keyFieldNames.join(ModelResourceIDs.ModelCompositeKeySeparator())
+export class ModelTypeNames {
+  static ModelFilterInputTypeName = (name: string) => `Model${DEFAULT_SCALARS[name] || name}FilterInput`
+  static ModelFilterScalarInputTypeName = (name: string, includeFilter: Boolean) =>
+    `Model${DEFAULT_SCALARS[name] || name}${includeFilter ? 'Filter' : ''}Input`
+  static ModelConditionInputTypeName = (name: string) => `Model${DEFAULT_SCALARS[name] || name}ConditionInput`
+  static ModelKeyConditionInputTypeName = (name: string) => `Model${DEFAULT_SCALARS[name] || name}KeyConditionInput`
   static ModelCompositeKeyConditionInputTypeName = (modelName: string, keyName: string) =>
     `Model${modelName}${keyName}CompositeKeyConditionInput`
   static ModelCompositeKeyInputTypeName = (modelName: string, keyName: string) =>
     `Model${modelName}${keyName}CompositeKeyInput`
-  static ModelFilterListInputTypeName(name: string, includeFilter: Boolean) {
-    const nameOverride = DEFAULT_SCALARS[name]
-    if (nameOverride) {
-      return `Model${nameOverride}List${includeFilter ? 'Filter' : ''}Input`
-    }
-    return `Model${name}List${includeFilter ? 'Filter' : ''}Input`
-  }
+  static ModelFilterListInputTypeName = (name: string, includeFilter: Boolean) =>
+    `Model${DEFAULT_SCALARS[name] || name}List${includeFilter ? 'Filter' : ''}Input`
 
-  static ModelScalarFilterInputTypeName(name: string, includeFilter: Boolean) {
-    const nameOverride = DEFAULT_SCALARS[name]
-    if (nameOverride) {
-      return `Model${nameOverride}${includeFilter ? 'Filter' : ''}Input`
-    }
-    return `Model${name}${includeFilter ? 'Filter' : ''}Input`
-  }
+  static ModelScalarFilterInputTypeName = (name: string, includeFilter: Boolean) =>
+    `Model${DEFAULT_SCALARS[name] || name}${includeFilter ? 'Filter' : ''}Input`
   static ModelConnectionTypeName = (typeName: string) => `Model${typeName}Connection`
   static ModelDeleteInputObjectName = (typeName: string) => graphqlName('Delete' + toUpper(typeName) + 'Input')
   static ModelUpdateInputObjectName = (typeName: string) => graphqlName('Update' + toUpper(typeName) + 'Input')
@@ -521,15 +383,9 @@ export class ModelResourceIDs {
   static ModelAttributeTypesName = () => `ModelAttributeTypes`
   static ModelSizeInputTypeName = () => `ModelSizeInput`
   static NonModelInputObjectName = (typeName: string) => graphqlName(toUpper(typeName) + 'Input')
-  static UrlParamsInputObjectName = (typeName: string, fieldName: string) =>
-    graphqlName(toUpper(typeName) + toUpper(fieldName) + 'ParamsInput')
-  static HttpQueryInputObjectName = (typeName: string, fieldName: string) =>
-    graphqlName(toUpper(typeName) + toUpper(fieldName) + 'QueryInput')
-  static HttpBodyInputObjectName = (typeName: string, fieldName: string) =>
-    graphqlName(toUpper(typeName) + toUpper(fieldName) + 'BodyInput')
 }
 
-export class ResolverResourceIDs {
+export class ResolverTypeNames {
   static CreateResolverResourceID = (typeName: string) => `Create${typeName}Resolver`
   static UpdateResolverResourceID = (typeName: string) => `Update${typeName}Resolver`
   static DeleteResolverResourceID = (typeName: string) => `Delete${typeName}Resolver`
@@ -538,15 +394,26 @@ export class ResolverResourceIDs {
   static ResolverResourceID = (typeName: string, fieldName: string) => `${typeName}${fieldName}Resolver`
 }
 
+export class ResolverNames {
+  static CreateResolver = (typeName: string) => `create${graphqlName(singularity(typeName))}`
+  static UpdateResolver = (typeName: string) => `update${graphqlName(singularity(typeName))}`
+  static DeleteResolver = (typeName: string) => `delete${graphqlName(singularity(typeName))}`
+  static GetResolver = (typeName: string) => `get${graphqlName(singularity(typeName))}`
+  static ListResolver = (typeName: string) => `list${graphqlName(plurality(typeName))}`
+}
+
 export function makeConnectionField(fieldName: string, returnTypeName: string, args: InputValueDefinitionNode[] = []) {
   return makeField(
     fieldName,
     [
       ...args,
-      makeInputValueDefinition('where', makeNamedType(ModelResourceIDs.ModelFilterInputTypeName(returnTypeName))),
+      makeInputValueDefinition(
+        INPUT_TYPE_NAME_WHERE,
+        makeNamedType(ModelTypeNames.ModelFilterInputTypeName(returnTypeName))
+      ),
       makeInputValueDefinition('limit', makeNamedType('Int')),
       // makeInputValueDefinition('nextToken', makeNamedType('String')),
     ],
-    makeNamedType(ModelResourceIDs.ModelConnectionTypeName(returnTypeName))
+    makeNamedType(ModelTypeNames.ModelConnectionTypeName(returnTypeName))
   )
 }
