@@ -96,6 +96,7 @@ export class ModelTransformer<Context> extends Transformer {
       throw new Error(
         `ModelDirective could not find a corresponding model ${modelName}, use (modelName: String) to set the correct value, or create it in the { models: [] } field.`
       )
+
     const resolvers = model.resolvers
     if (!(resolvers.create || resolvers.delete || resolvers.get || resolvers.list || resolvers.update))
       throw new Error(`Model ${modelName} does not provide any resolvers, this model is invalid as a model`)

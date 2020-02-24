@@ -99,7 +99,6 @@ it.skip('should omit generating mutations', () => {
       dummy: Int # Make sure the Mutation type exists
     }
   `)
-  console.log(typeDefs)
   const document = parse(typeDefs)
   const expectFieldsOnType = expectFieldsOnTypeGenerator(document)
   expectFieldsOnType('Query', ['getUser', 'listUsers'])

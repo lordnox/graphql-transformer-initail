@@ -34,19 +34,8 @@ import {
 } from './transformer-common'
 import { TransformerContext } from './transformer-core'
 
-export const STRING_CONDITIONS = [
-  'ne',
-  'eq',
-  'le',
-  'lt',
-  'ge',
-  'gt',
-  'contains',
-  'notContains',
-  'between',
-  'beginsWith',
-]
-export const ID_CONDITIONS = ['ne', 'eq', 'le', 'lt', 'ge', 'gt', 'contains', 'notContains', 'between', 'beginsWith']
+export const STRING_CONDITIONS = ['ne', 'eq', 'le', 'lt', 'ge', 'gt', 'in', 'notIn']
+export const ID_CONDITIONS = ['ne', 'eq', 'le', 'lt', 'ge', 'gt', 'in', 'notIn']
 export const INT_CONDITIONS = ['ne', 'eq', 'le', 'lt', 'ge', 'gt', 'between']
 export const FLOAT_CONDITIONS = ['ne', 'eq', 'le', 'lt', 'ge', 'gt', 'between']
 export const BOOLEAN_CONDITIONS = ['ne', 'eq']
@@ -589,10 +578,13 @@ export function makeModelScalarFilterInputObject(
 
 function getScalarFilterInputType(condition: string, type: string, filterInputName: string): TypeNode {
   switch (condition) {
+    case 'in':
+    case 'notIn':
     case 'between':
       return makeListType(makeNamedType(type))
     case JOIN_TYPE_AND:
     case JOIN_TYPE_OR:
+    case JOIN_TYPE_NOT:
       return makeNamedType(filterInputName)
     default:
       return makeNamedType(type)
